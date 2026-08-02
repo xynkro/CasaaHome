@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// Photos of items, storage places and the floorplan. Same household rule as
+// Firestore, but Storage rules cannot read Firestore — so the allowlist is
+// duplicated here and must be kept in step by hand when someone is added.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function member() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in [
+          'the.disruptive.comp@gmail.com'
+          // add household members here, lowercase, comma separated
+        ];
+    }
+
+    match /items/{file} {
+      allow read: if member();
+      // 8 MB ceiling: the client downscales to ~1600px before upload, so
+      // anything larger means something bypassed shrinkImage().
+      allow write: if member()
+        && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /locations/{file} {
+      allow read: if member();
+      allow write: if member()
+        && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Floorplans are uploaded at full resolution deliberately — you need the
+    // detail to trace accurately.
+    match /plans/{file} {
+      allow read: if member();
+      allow write: if member()
+        && request.resource.size < 25 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}

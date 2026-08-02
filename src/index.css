@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink-950: #08090B;
+  --color-ink-900: #0B0D0F;
+  --color-ink-850: #101317;
+  --color-ink-800: #14181C;
+  --color-ink-700: #1C2126;
+  --color-ink-600: #2A3138;
+  --color-ink-500: #3D464F;
+  --color-ink-400: #6B767F;
+  --color-ink-300: #9AA5AE;
+  --color-ink-200: #C6CED4;
+
+  --color-brass-300: #F2BE6B;
+  --color-brass-400: #E8A33D;
+  --color-brass-500: #D18F2C;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+}
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(1100px 700px at 12% -12%, #1a1410 0%, transparent 60%),
+    radial-gradient(900px 600px at 92% 8%, #101820 0%, transparent 55%),
+    var(--color-ink-900);
+  color: var(--color-ink-200);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+/* Tabular figures everywhere quantities appear — counts should not jitter. */
+.tnum { font-variant-numeric: tabular-nums; }
+
+.panel {
+  background: color-mix(in oklab, var(--color-ink-800) 88%, transparent);
+  border: 1px solid var(--color-ink-700);
+  border-radius: 1rem;
+}
+
+input, select, textarea, button { font: inherit; }
+
+input[type="text"], input[type="number"], input[type="date"], input[type="url"],
+input[type="search"], select, textarea {
+  background: var(--color-ink-850);
+  border: 1px solid var(--color-ink-600);
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  color: var(--color-ink-200);
+  width: 100%;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--color-brass-500);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-brass-400) 18%, transparent);
+}
+input::placeholder, textarea::placeholder { color: var(--color-ink-500); }
+
+/* Kill number spinners — useless on touch. */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+  border-radius: .7rem; padding: .55rem .9rem; font-weight: 600; font-size: .875rem;
+  border: 1px solid transparent; cursor: pointer; transition: all .15s;
+  white-space: nowrap;
+}
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-primary { background: var(--color-brass-400); color: #1a1206; }
+.btn-primary:hover:not(:disabled) { background: var(--color-brass-300); }
+.btn-ghost { background: var(--color-ink-800); border-color: var(--color-ink-600); color: var(--color-ink-200); }
+.btn-ghost:hover:not(:disabled) { background: var(--color-ink-700); }
+.btn-danger { background: color-mix(in oklab, #f43f5e 16%, transparent); border-color: color-mix(in oklab, #f43f5e 40%, transparent); color: #fda4af; }
+
+.chip {
+  display: inline-flex; align-items: center; gap: .3rem;
+  border-radius: 999px; padding: .12rem .5rem;
+  font-size: .68rem; font-weight: 600; letter-spacing: .02em;
+  border: 1px solid;
+}
+
+.scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: var(--color-ink-600); border-radius: 8px; }
+.scroll-thin::-webkit-scrollbar-track { background: transparent; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise .22s ease-out both; }
+
+@keyframes sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+.sheet-up { animation: sheet-up .24s cubic-bezier(.22,1,.36,1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .sheet-up { animation: none; }
+}

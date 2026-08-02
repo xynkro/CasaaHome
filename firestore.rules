@@ -1,0 +1,46 @@
+rules_version = '2';
+
+// CasaaHome — one household, an explicit allowlist, nothing public.
+//
+// The allowlist lives in config/access.emails so it can be edited from the
+// app without redeploying rules. get() inside a rule is not itself subject to
+// rules, so that document stays readable to the engine even when the caller
+// is not on the list.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function household() {
+      return get(/databases/$(database)/documents/config/access).data.emails;
+    }
+
+    function member() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in household();
+    }
+
+    // Inventory, places, house geometry, shopping state, event log.
+    match /items/{id}      { allow read, write: if member(); }
+    match /locations/{id}  { allow read, write: if member(); }
+    match /house/{id}      { allow read, write: if member(); }
+    match /shopping/{id}   { allow read, write: if member(); }
+    match /events/{id}     { allow read, create: if member(); allow update, delete: if false; }
+    match /telegram/{id}   { allow read, write: if member(); }
+
+    match /config/settings { allow read, write: if member(); }
+    match /config/telegram { allow read, write: if member(); }
+
+    // The allowlist itself: members can read it and add/remove people, but
+    // they cannot remove themselves into a locked-out state by accident, and
+    // no one outside can read who lives here.
+    match /config/access {
+      allow read: if member();
+      allow write: if member()
+        && request.resource.data.emails is list
+        && request.resource.data.emails.size() > 0
+        && request.auth.token.email.lower() in request.resource.data.emails;
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}

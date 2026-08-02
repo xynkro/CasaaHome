@@ -1,0 +1,34 @@
+name: Telegram notifier
+
+on:
+  schedule:
+    # Hourly. The script decides what (if anything) is worth sending:
+    # a queued shopping list, a "just ran out" alert, or the weekly digest.
+    - cron: '7 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Print the messages instead of sending them'
+        type: boolean
+        default: false
+
+concurrency:
+  group: notify
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsx scripts/notify.ts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          APP_URL: ${{ vars.APP_URL }}
+          DRY_RUN: ${{ inputs.dry_run }}
