@@ -27,7 +27,20 @@ const TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const DRY = process.env.DRY_RUN === 'true'
 
 const svc = process.env.FIREBASE_SERVICE_ACCOUNT
-if (!svc) throw new Error('FIREBASE_SERVICE_ACCOUNT is not set')
+if (!svc) {
+  // Not an error: the cron starts running the moment the repo exists, which
+  // is before anyone has had a chance to add the secrets. Exiting green keeps
+  // the Actions tab honest — a red run should mean something is broken.
+  console.log(
+    'FIREBASE_SERVICE_ACCOUNT is not set — Telegram is not configured yet.\n' +
+    'See README step 4. Nothing to do.',
+  )
+  process.exit(0)
+}
+if (!TOKEN && !DRY) {
+  console.log('TELEGRAM_BOT_TOKEN is not set — Telegram is not configured yet. Nothing to do.')
+  process.exit(0)
+}
 initializeApp({ credential: cert(JSON.parse(svc)) })
 const db = getFirestore()
 
@@ -153,8 +166,6 @@ function useSoonMessage(entries: ReturnType<typeof buildUseSoon>) {
 // --- main ------------------------------------------------------------------
 
 async function main() {
-  if (!TOKEN && !DRY) throw new Error('TELEGRAM_BOT_TOKEN is not set')
-
   const { items, locations, settings, chatId, state, outbox } = await load()
   if (!chatId && !DRY) {
     console.log('No chat ID configured yet — set it in the app under Settings › Telegram. Nothing sent.')
