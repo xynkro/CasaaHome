@@ -7,67 +7,59 @@ Telegram list telling you what to buy and where to buy it.
 - **How much is left** — correct the count to reality in one tap; the app learns the burn rate
 - **What to buy** — auto shopping list split into a Singapore run, a JB run, and Shopee
 - **What to use up** — expiry warnings, plus nudges about things forgotten in storage
-- **The house** — trace your 2D floorplan once; walk through the 3D model and tap a cupboard to see inside
+- **The house** — trace your 2D floorplan once; orbit the 3D doll's-house cutaway and tap a cupboard to see inside
 
 Stack: React + Vite + Three.js PWA on GitHub Pages · Firestore + Cloud Storage ·
 Telegram via a scheduled GitHub Action.
 
 ---
 
-## One-time setup
+## Live
 
-Four things need a human. Everything else is already provisioned.
+**App:** <https://xynkro.github.io/CasaaHome/> · **Bot:** [@LVHome1646Bot](https://t.me/LVHome1646Bot)
 
-### 1. Turn on Google sign-in (2 min, required)
+## Setup — what is already done
 
-Firebase creates the OAuth client for you, but only from the console.
+- Firebase project `casaahome` created, Firestore in `asia-southeast1`, rules deployed
+- Household allowlist seeded with `the.disruptive.comp@gmail.com`
+- GitHub Pages deploying from Actions on every push to `main`
+- Repo secrets `TELEGRAM_BOT_TOKEN` and `FIREBASE_SERVICE_ACCOUNT` set, and the
+  notifier verified end to end with a dry run
+- Household name set to **Casaa**
 
-1. Open <https://console.firebase.google.com/project/casaahome/authentication>
-2. **Get started** → **Google** → toggle **Enable** → pick a support email → **Save**
-3. Go to **Settings → Authorised domains** and add `xynkro.github.io`
+## Setup — what still needs you
 
-### 2. Upgrade the project to Blaze (2 min, required for photos)
+### 1. Turn on Google sign-in — required, nothing works without it
+
+Firebase mints the OAuth client for you, but only from the console.
+
+1. <https://console.firebase.google.com/project/casaahome/authentication/providers>
+2. **Get started** → **Google** → **Enable** → pick a support email → **Save**
+3. **Settings → Authorised domains** → **Add domain** → `xynkro.github.io`
+
+### 2. Upgrade to Blaze — required for photos only
 
 Cloud Storage on projects created after Oct 2024 needs a billing account attached.
-At this scale it stays inside the free allowances — expect roughly nothing per month,
-but set a budget alert if you want a hard stop.
+At this scale it stays inside the free allowances; set a budget alert if you want a
+hard ceiling. Everything except photo and floorplan upload works without this.
 
-1. <https://console.firebase.google.com/project/casaahome/usage/details> → **Upgrade to Blaze**
-2. Then <https://console.firebase.google.com/project/casaahome/storage> → **Get started**
-   → pick **asia-southeast1** (same region as Firestore)
-3. Back here, push the Storage rules:
+1. <https://console.firebase.google.com/project/casaahome/usage/details> → **Upgrade**
+2. <https://console.firebase.google.com/project/casaahome/storage> → **Get started**
+   → **asia-southeast1**, same region as Firestore
+3. `npm run rules:deploy` to push the Storage rules
 
-```bash
-firebase deploy --only storage --project casaahome
-```
+### 3. Point the bot at you
 
-Until this is done everything works except photo and floorplan upload.
+Open [@LVHome1646Bot](https://t.me/LVHome1646Bot) and send it anything — a bot cannot
+message you first. Then read your numeric chat ID from
+`https://api.telegram.org/bot<TOKEN>/getUpdates` and paste it into
+**Settings → Telegram → Chat ID** in the app.
 
-### 3. Create the Telegram bot (3 min)
+### 4. Add Sarah
 
-1. Message [@BotFather](https://t.me/BotFather) → `/newbot` → name it → copy the token
-2. Send your new bot any message (it cannot DM you until you speak first)
-3. Get your numeric chat ID — open this in a browser, replacing `<TOKEN>`:
-   `https://api.telegram.org/bot<TOKEN>/getUpdates` and read `message.chat.id`
-4. Paste that ID into the app under **Settings → Telegram**
-
-### 4. Add the GitHub secrets (3 min)
-
-In **repo → Settings → Secrets and variables → Actions**:
-
-| Name | Type | Value |
-|---|---|---|
-| `TELEGRAM_BOT_TOKEN` | secret | the BotFather token |
-| `FIREBASE_SERVICE_ACCOUNT` | secret | the whole service-account JSON, pasted raw |
-| `APP_URL` | variable | `https://xynkro.github.io/CasaaHome/` |
-
-Get the service account from
-<https://console.firebase.google.com/project/casaahome/settings/serviceaccounts/adminsdk>
-→ **Generate new private key**. Paste the file contents into the secret; never commit it.
-
-Then enable Pages: **repo → Settings → Pages → Source: GitHub Actions**.
-
----
+**Settings → Who can get in** → her Google address. Then add the same address to the
+list in `storage.rules` and run `npm run rules:deploy`, or her photo uploads will be
+refused — Storage rules cannot read Firestore, so that list is duplicated on purpose.
 
 ## How it decides things
 
@@ -111,17 +103,22 @@ dry run ✓**, or locally:
 FIREBASE_SERVICE_ACCOUNT="$(cat serviceAccount.json)" npm run notify:dry
 ```
 
-## Adding your household
+## The 3D view
 
-**Settings → Who can get in** → add their Google address. The database enforces the
-list, not just the app. Storage rules keep their own copy of the list — add the address
-in `storage.rules` too and redeploy, or their photo uploads will be refused.
+The doll's-house cutaway is generated from the floorplan you trace — walls sliced at
+1.25 m so you can see into every room, room floors tinted, and each storage place drawn
+as furniture massing sized to its kind. Anything running low gets a coloured bead above
+it, so the state of the house reads at a glance. **Cutaway** toggles full-height walls;
+on desktop, **Walk through** drops you inside at eye height (WASD, pointer lock).
 
 ## Local development
 
 ```bash
 npm install
-npm run dev
+npm run dev            # against live Firebase
+npm run emu            # in another shell: Firebase emulators
+npm run dev:emu        # against the emulators instead
+npm test               # logic checks for stock, burn rate, shopping
 ```
 
 ## Layout
