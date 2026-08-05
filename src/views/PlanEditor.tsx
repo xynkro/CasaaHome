@@ -34,6 +34,7 @@ export default function PlanEditor() {
 
   const wrapRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
 
   const [tool, setTool] = useState<Tool>('select')
   const [busy, setBusy] = useState(false)
@@ -58,14 +59,21 @@ export default function PlanEditor() {
     setTimeout(() => setSaveState(s => (s === 'saved' ? 'idle' : s)), 1600)
   }, [savePlan])
 
-  const edit = useCallback((next: { walls?: Wall[]; rooms?: Room[] }) => {
-    const w = next.walls ?? walls
-    const r = next.rooms ?? rooms
-    setHistory(h => [...h.slice(-29), { walls, rooms }])
+  /** Update + persist, without touching undo. Used during a drag. */
+  const apply = useCallback((w: Wall[], r: Room[]) => {
     setDraftWalls(w); setDraftRooms(r)
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => void flush(w, r), SAVE_DEBOUNCE)
-  }, [walls, rooms, flush])
+  }, [flush])
+
+  const pushHistory = useCallback((w: Wall[], r: Room[]) => {
+    setHistory(h => [...h.slice(-29), { walls: w, rooms: r }])
+  }, [])
+
+  const edit = useCallback((next: { walls?: Wall[]; rooms?: Room[] }) => {
+    pushHistory(walls, rooms)
+    apply(next.walls ?? walls, next.rooms ?? rooms)
+  }, [walls, rooms, apply, pushHistory])
 
   const undo = () => {
     const prev = history[history.length - 1]
@@ -89,6 +97,26 @@ export default function PlanEditor() {
   const [roomName, setRoomName] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
   const [markerFor, setMarkerFor] = useState('')
+  const [selRoom, setSelRoom] = useState<string | null>(null)
+  /**
+   * Dragging works off a snapshot taken when the gesture starts, so every
+   * move recomputes from the original rather than accumulating rounding.
+   */
+  type DragState = {
+    kind: 'wall' | 'wallEnd' | 'room' | 'roomVertex'
+    id: string
+    end?: 'a' | 'b'
+    index?: number
+    from: P
+    walls: Wall[]
+    rooms: Room[]
+  }
+  /**
+   * A ref, not state: the first pointermove of a quick drag arrives before
+   * React has re-rendered with the new state, so a state-based handler sees
+   * null and the drag silently does nothing.
+   */
+  const dragRef = useRef<DragState | null>(null)
   const [hint, setHint] = useState<string | null>(null)
 
   const bgUrl = plan.planImageUrl ?? plan.planImageData ?? localPlan
@@ -155,20 +183,70 @@ export default function PlanEditor() {
   const lengthM = (a: P, b: P) => Math.hypot(b[0] - a[0], b[1] - a[1]) * (mpp ?? 0)
 
   // --- pointer -------------------------------------------------------------
-  const pointAt = (e: React.PointerEvent<SVGSVGElement>): P => {
-    const r = e.currentTarget.getBoundingClientRect()
+  /** Screen point -> image pixels. Measured against the SVG root, so it works
+   *  from handlers on child shapes too. */
+  const pointAt = (e: { clientX: number; clientY: number }): P => {
+    const r = svgRef.current?.getBoundingClientRect()
+    if (!r) return [0, 0]
     return [unsx(e.clientX - r.left), unsx(e.clientY - r.top)]
   }
 
+  const startDrag = (d: DragState) => {
+    pushHistory(walls, rooms)
+    dragRef.current = d
+  }
+
+  const applyDrag = (to: P) => {
+    const drag = dragRef.current
+    if (!drag) return
+    const dx = toM(to[0] - drag.from[0])
+    const dz = toM(to[1] - drag.from[1])
+    const near = (p: Pt, q: Pt) => Math.hypot(p.x - q.x, p.z - q.z) < 0.02
+
+    if (drag.kind === 'wall') {
+      const orig = drag.walls.find(w => w.id === drag.id)!
+      apply(drag.walls.map(w => w.id !== drag.id ? w : {
+        ...w, a: { x: orig.a.x + dx, z: orig.a.z + dz }, b: { x: orig.b.x + dx, z: orig.b.z + dz },
+      }), drag.rooms)
+      return
+    }
+    if (drag.kind === 'wallEnd') {
+      const orig = drag.walls.find(w => w.id === drag.id)!
+      const anchor = drag.end === 'a' ? orig.a : orig.b
+      const moved = { x: anchor.x + dx, z: anchor.z + dz }
+      // Weld: any endpoint sitting on the same corner moves with it, or the
+      // room falls apart the first time you nudge a shared corner.
+      apply(drag.walls.map(w => ({
+        ...w,
+        a: near(w.a, anchor) ? moved : w.a,
+        b: near(w.b, anchor) ? moved : w.b,
+      })), drag.rooms)
+      return
+    }
+    const orig = drag.rooms.find(r => r.id === drag.id)!
+    if (drag.kind === 'room') {
+      apply(drag.walls, drag.rooms.map(r => r.id !== drag.id ? r : {
+        ...r, polygon: orig.polygon.map(p => ({ x: p.x + dx, z: p.z + dz })),
+      }))
+    } else {
+      apply(drag.walls, drag.rooms.map(r => r.id !== drag.id ? r : {
+        ...r, polygon: orig.polygon.map((p, i) => i === drag.index ? { x: p.x + dx, z: p.z + dz } : p),
+      }))
+    }
+  }
+
   const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (dragRef.current) { applyDrag(pointAt(e)); return }
     if (tool === 'select') return
     const raw = pointAt(e)
     const from = chain[chain.length - 1] ?? rectStart ?? undefined
     setCursor(resolve(raw, from))
   }
 
+  const onUp = () => { dragRef.current = null }
+
   const onDown = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (tool === 'select') { setSelected(null); return }
+    if (tool === 'select') { setSelected(null); setSelRoom(null); return }
     const raw = pointAt(e)
     const from = chain[chain.length - 1] ?? rectStart ?? undefined
     const p = resolve(raw, from)
@@ -223,8 +301,9 @@ export default function PlanEditor() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') endChain()
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo() }
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selected) {
-        edit({ walls: walls.filter(w => w.id !== selected) }); setSelected(null)
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selected) { edit({ walls: walls.filter(w => w.id !== selected) }); setSelected(null) }
+        else if (selRoom) { edit({ rooms: rooms.filter(r => r.id !== selRoom) }); setSelRoom(null) }
       }
     }
     window.addEventListener('keydown', onKey)
@@ -256,6 +335,7 @@ export default function PlanEditor() {
   const unplaced = useMemo(() => locations.filter(l => !l.pos), [locations])
   const placed = useMemo(() => locations.filter(l => l.pos), [locations])
   const selectedWall = walls.find(w => w.id === selected) ?? null
+  const selectedRoom = rooms.find(r => r.id === selRoom) ?? null
 
   // --- preview geometry ----------------------------------------------------
   const previewFrom = chain[chain.length - 1] ?? null
@@ -314,6 +394,15 @@ export default function PlanEditor() {
                 onClick={() => { edit({ walls: walls.filter(w => w.id !== selectedWall.id) }); setSelected(null) }}
               >Delete wall</button>
             )}
+            {selectedRoom && (
+              <>
+                <span className="text-xs font-medium text-brass-300">{selectedRoom.name}</span>
+                <button
+                  className="btn btn-danger px-2.5 py-1 text-xs"
+                  onClick={() => { edit({ rooms: rooms.filter(r => r.id !== selectedRoom.id) }); setSelRoom(null) }}
+                >Delete room</button>
+              </>
+            )}
             <span className="tnum ml-auto text-[0.68rem] text-ink-500">
               {walls.length} walls · {rooms.length} rooms
               {saveState === 'saving' && <span className="ml-2 text-brass-400">saving…</span>}
@@ -334,18 +423,46 @@ export default function PlanEditor() {
                     backgroundSize: `${sx(25)}px ${sx(25)}px` }} />}
 
               <svg
+                ref={svgRef}
                 className="absolute inset-0 size-full touch-none"
                 onPointerDown={onDown}
                 onPointerMove={onMove}
-                onPointerLeave={() => setCursor(null)}
+                onPointerUp={onUp}
+                onPointerCancel={onUp}
+                onPointerLeave={() => { setCursor(null); onUp() }}
                 onDoubleClick={endChain}
                 style={{ cursor: tool === 'select' ? 'default' : 'crosshair' }}
               >
-                {rooms.map(r => (
-                  <polygon key={r.id}
-                    points={r.polygon.map(p => `${sx(toPx(p.x))},${sx(toPx(p.z))}`).join(' ')}
-                    fill="#E8A33D" fillOpacity={0.09} stroke="#E8A33D" strokeOpacity={0.45} strokeWidth={1.5} />
-                ))}
+                {rooms.map(r => {
+                  const on = selRoom === r.id
+                  return (
+                    <g key={r.id}>
+                      <polygon
+                        points={r.polygon.map(p => `${sx(toPx(p.x))},${sx(toPx(p.z))}`).join(' ')}
+                        fill="#E8A33D" fillOpacity={on ? 0.2 : 0.09}
+                        stroke="#E8A33D" strokeOpacity={on ? 0.9 : 0.45} strokeWidth={on ? 2.5 : 1.5}
+                        style={{ pointerEvents: tool === 'select' ? 'auto' : 'none', cursor: 'move' }}
+                        onPointerDown={e => {
+                          if (tool !== 'select') return
+                          e.stopPropagation()
+                          ;(e.target as Element).setPointerCapture?.(e.pointerId)
+                          setSelRoom(r.id); setSelected(null)
+                          startDrag({ kind: 'room', id: r.id, from: pointAt(e), walls, rooms })
+                        }}
+                      />
+                      {on && r.polygon.map((p, i) => (
+                        <circle key={i} cx={sx(toPx(p.x))} cy={sx(toPx(p.z))} r={8}
+                          fill="#F2BE6B" stroke="#0B0D0F" strokeWidth={2}
+                          style={{ cursor: 'grab' }}
+                          onPointerDown={e => {
+                            e.stopPropagation()
+                            ;(e.target as Element).setPointerCapture?.(e.pointerId)
+                            startDrag({ kind: 'roomVertex', id: r.id, index: i, from: pointAt(e), walls, rooms })
+                          }} />
+                      ))}
+                    </g>
+                  )
+                })}
 
                 {walls.map(w => {
                   const a: P = [toPx(w.a.x), toPx(w.a.z)], b: P = [toPx(w.b.x), toPx(w.b.z)]
@@ -357,8 +474,24 @@ export default function PlanEditor() {
                       {/* Fat invisible stroke: a 3px line is untappable on a phone. */}
                       <line x1={sx(a[0])} y1={sx(a[1])} x2={sx(b[0])} y2={sx(b[1])}
                         stroke="transparent" strokeWidth={20} strokeLinecap="round"
-                        style={{ cursor: tool === 'select' ? 'pointer' : 'crosshair' }}
-                        onPointerDown={e => { if (tool !== 'select') return; e.stopPropagation(); setSelected(w.id) }} />
+                        style={{ cursor: tool === 'select' ? 'move' : 'crosshair' }}
+                        onPointerDown={e => {
+                          if (tool !== 'select') return
+                          e.stopPropagation()
+                          ;(e.target as Element).setPointerCapture?.(e.pointerId)
+                          setSelected(w.id); setSelRoom(null)
+                          startDrag({ kind: 'wall', id: w.id, from: pointAt(e), walls, rooms })
+                        }} />
+                      {on && ([['a', a], ['b', b]] as ['a' | 'b', P][]).map(([end, pt]) => (
+                        <circle key={end} cx={sx(pt[0])} cy={sx(pt[1])} r={9}
+                          fill="#F2BE6B" stroke="#0B0D0F" strokeWidth={2}
+                          style={{ cursor: 'grab' }}
+                          onPointerDown={e => {
+                            e.stopPropagation()
+                            ;(e.target as Element).setPointerCapture?.(e.pointerId)
+                            startDrag({ kind: 'wallEnd', id: w.id, end, from: pointAt(e), walls, rooms })
+                          }} />
+                      ))}
                     </g>
                   )
                 })}
@@ -518,7 +651,7 @@ export default function PlanEditor() {
 }
 
 const HELP: Record<Tool, string> = {
-  select: 'Tap a wall to select it, then Delete. Tap a marker to remove it.',
+  select: 'Drag a wall or room to move it. Tap to select, then drag its corner handles, or Delete. Tap a marker to remove it.',
   scale: 'Tap two points a known distance apart, then type the distance.',
   rect: 'Tap one corner, then the opposite corner — draws four walls and offers to name the room.',
   wall: 'Tap corner to corner. Near-straight lines snap square; ends snap together. Esc or double-tap to finish a run.',
