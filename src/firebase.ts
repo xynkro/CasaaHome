@@ -1,9 +1,13 @@
 import { initializeApp } from 'firebase/app'
 import {
-  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  connectFirestoreEmulator,
+  initializeFirestore, memoryLocalCache, persistentLocalCache,
+  persistentMultipleTabManager, connectFirestoreEmulator, type Firestore,
 } from 'firebase/firestore'
-import { getAuth, GoogleAuthProvider, connectAuthEmulator } from 'firebase/auth'
+import {
+  getAuth, initializeAuth, GoogleAuthProvider, connectAuthEmulator,
+  indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence,
+  inMemoryPersistence, browserPopupRedirectResolver, type Auth,
+} from 'firebase/auth'
 import { getStorage, connectStorageEmulator } from 'firebase/storage'
 
 // This config is public by design (Firebase web keys are identifiers, not
@@ -20,17 +24,77 @@ const firebaseConfig = {
 
 export const app = initializeApp(firebaseConfig)
 
-// Offline-first: the whole point of a pantry app is that it works while you
-// are standing in a store cupboard with one bar of signal.
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-})
+/**
+ * Auth with an explicit persistence ladder.
+ *
+ * The default is IndexedDB only, and IndexedDB is genuinely unavailable in
+ * several ordinary situations — private windows, in-app browsers (Telegram,
+ * Instagram, some webviews), and browsers with site storage blocked. When it
+ * fails the SDK throws out of signInWithPopup with a raw storage error
+ * ("Database is closing/hidden"), which reads to the user as though the app's
+ * database is broken. Listing fallbacks lets it degrade to a session-scoped
+ * or in-memory login instead of refusing to sign in at all.
+ */
+function makeAuth(): Auth {
+  try {
+    return initializeAuth(app, {
+      persistence: [
+        indexedDBLocalPersistence,
+        browserLocalPersistence,
+        browserSessionPersistence,
+        inMemoryPersistence,
+      ],
+      // Required explicitly with initializeAuth, or popup and redirect
+      // sign-in are both unavailable.
+      popupRedirectResolver: browserPopupRedirectResolver,
+    })
+  } catch {
+    // Already initialised (hot reload), or the environment rejected the
+    // whole ladder. getAuth returns the existing instance.
+    return getAuth(app)
+  }
+}
 
-export const auth = getAuth(app)
+export const auth = makeAuth()
+
+/**
+ * Offline-first: the point of a pantry app is that it works while you are
+ * standing in a store cupboard with one bar of signal. But the persistent
+ * cache is also IndexedDB — where that is blocked, fall back to memory so the
+ * app still runs, just without offline reads.
+ */
+function makeDb(): Firestore {
+  try {
+    return initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    })
+  } catch {
+    return initializeFirestore(app, { localCache: memoryLocalCache() })
+  }
+}
+
+export const db = makeDb()
 export const storage = getStorage(app)
 
 export const googleProvider = new GoogleAuthProvider()
 googleProvider.setCustomParameters({ prompt: 'select_account' })
+
+/** True when the browser will not give us a working IndexedDB. */
+export async function indexedDbUsable(): Promise<boolean> {
+  if (typeof indexedDB === 'undefined') return false
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const req = indexedDB.open('casaahome-probe')
+      req.onsuccess = () => { req.result.close(); resolve() }
+      req.onerror = () => reject(req.error)
+      req.onblocked = () => reject(new Error('blocked'))
+    })
+    indexedDB.deleteDatabase('casaahome-probe')
+    return true
+  } catch {
+    return false
+  }
+}
 
 // Local development against `firebase emulators:start`. Never true in a
 // production build — Vite strips this branch entirely.

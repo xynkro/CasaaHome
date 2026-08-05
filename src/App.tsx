@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useStore } from './store'
+import { indexedDbUsable } from './firebase'
 import Dashboard from './views/Dashboard'
 import SearchView from './views/SearchView'
 import LocationsView from './views/LocationsView'
@@ -33,8 +34,13 @@ export default function App() {
   const error = useStore(s => s.error)
   const location = useLocation()
   const [openItem, setOpenItem] = useState<string | null>(null)
+  const [storageBlocked, setStorageBlocked] = useState(false)
 
   useEffect(() => subscribe(), [subscribe])
+
+  // Warn before the user clicks, rather than explaining a raw storage error
+  // after the popup has already thrown.
+  useEffect(() => { void indexedDbUsable().then(ok => setStorageBlocked(!ok)) }, [])
 
   // Deep link: #/item/<id> opens the detail sheet over whatever is behind it.
   useEffect(() => {
@@ -66,7 +72,14 @@ export default function App() {
           <button className="btn btn-primary mt-6 w-full" onClick={signIn}>
             Sign in with Google
           </button>
-          {error && <p className="mt-3 text-xs text-rose-300">{error}</p>}
+          {error && <p className="mt-3 text-left text-xs leading-relaxed text-rose-300">{error}</p>}
+          {storageBlocked && !error && (
+            <p className="mt-3 text-left text-xs leading-relaxed text-amber-300">
+              This browser is blocking site storage, so the login may not stick.
+              If sign-in fails, open the page in Safari or Chrome directly rather
+              than inside another app.
+            </p>
+          )}
           <p className="mt-6 text-[0.65rem] text-ink-500">© {year} · household use only</p>
         </div>
       </div>

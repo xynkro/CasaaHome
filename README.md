@@ -16,7 +16,19 @@ Telegram via a scheduled GitHub Action.
 
 ## Live
 
-**App:** <https://xynkro.github.io/CasaaHome/> · **Bot:** [@LVHome1646Bot](https://t.me/LVHome1646Bot)
+**App:** <https://casaahome.web.app> — use this one.
+**Mirror:** <https://xynkro.github.io/CasaaHome/>
+**Bot:** [@LVHome1646Bot](https://t.me/LVHome1646Bot)
+
+Both serve the same build. Prefer `casaahome.web.app`: it is the same origin as the
+Firebase auth domain, so Google sign-in never touches cross-site storage. On the
+GitHub Pages mirror the login *is* cross-site, and browsers that partition or block
+third-party storage — private windows, in-app browsers, strict tracking-prevention
+settings — can refuse it. The app now falls back from popup to redirect and degrades
+its session persistence rather than failing outright, but same-origin simply avoids
+the problem.
+
+Deploy the mirror: push to `main`. Deploy the primary: `npm run deploy:hosting`.
 
 ## Setup — what is already done
 

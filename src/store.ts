@@ -3,7 +3,10 @@ import {
   collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc,
   query, orderBy, limit, serverTimestamp, writeBatch,
 } from 'firebase/firestore'
-import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth'
+import {
+  onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult,
+  signOut, type User,
+} from 'firebase/auth'
 import { auth, db, googleProvider } from './firebase'
 import {
   DEFAULT_SETTINGS,
@@ -86,8 +89,17 @@ export const useStore = create<Store>((set, get) => ({
     set({ error: null, accessDenied: false })
     try {
       await signInWithPopup(auth, googleProvider)
+      return
     } catch (e) {
-      set({ error: (e as Error).message })
+      if (isUserCancelled(e)) return
+      if (!worthRetryingByRedirect(e)) { set({ error: explain(e) }); return }
+      // Popups are blocked or the storage the popup flow needs is unavailable
+      // (private window, in-app browser). A full-page redirect needs neither.
+      try {
+        await signInWithRedirect(auth, googleProvider)
+      } catch (e2) {
+        set({ error: explain(e2) })
+      }
     }
   },
 
@@ -141,6 +153,13 @@ export const useStore = create<Store>((set, get) => ({
         () => { /* activity feed is non-critical */ },
       ))
     }
+
+    // If signIn fell back to a full-page redirect, the answer is waiting here
+    // when we come back. Failures are reported, not swallowed — otherwise a
+    // redirect that bounced looks identical to never having tried.
+    getRedirectResult(auth).catch(e => {
+      if (!isUserCancelled(e)) set({ error: explain(e) })
+    })
 
     const unsubAuth = onAuthStateChanged(auth, u => {
       set({ user: u, authReady: true })
@@ -283,6 +302,50 @@ export const useStore = create<Store>((set, get) => ({
 
 function normaliseShopping(d: Partial<ShoppingState>): ShoppingState {
   return { checked: d.checked ?? {}, manual: d.manual ?? [], updatedAt: d.updatedAt }
+}
+
+// --- sign-in error handling ------------------------------------------------
+
+const codeOf = (e: unknown) => String((e as { code?: string })?.code ?? '')
+const msgOf = (e: unknown) => String((e as { message?: string })?.message ?? e ?? '')
+
+/** Closing the Google popup is not an error worth showing. */
+function isUserCancelled(e: unknown): boolean {
+  return /popup-closed-by-user|cancelled-popup-request|user-cancelled/.test(codeOf(e))
+}
+
+/**
+ * Popup sign-in fails for two broad reasons: the popup itself was refused, or
+ * the browser storage the popup flow depends on is unavailable. A full-page
+ * redirect needs neither, so it is worth one automatic attempt. Anything else
+ * — wrong domain, network down, provider disabled — would fail identically.
+ */
+function worthRetryingByRedirect(e: unknown): boolean {
+  const s = `${codeOf(e)} ${msgOf(e)}`.toLowerCase()
+  if (/unauthorized-domain|network-request-failed|operation-not-allowed/.test(s)) return false
+  return /popup|storage|indexeddb|database|not-supported|unsupported/.test(s)
+}
+
+function explain(e: unknown): string {
+  const code = codeOf(e)
+  const s = `${code} ${msgOf(e)}`.toLowerCase()
+
+  if (code === 'auth/unauthorized-domain') {
+    return `${location.hostname} is not an authorised domain for this Firebase project. Add it under Authentication → Settings → Authorised domains.`
+  }
+  if (code === 'auth/operation-not-allowed') {
+    return 'Google sign-in is not enabled on this Firebase project yet.'
+  }
+  if (code === 'auth/network-request-failed') {
+    return 'Could not reach Google. Check the connection and try again.'
+  }
+  if (/storage|indexeddb|database|web-storage/.test(s)) {
+    return 'This browser is not letting the app store a login. That usually means a private window or an in-app browser — open the link in Safari or Chrome directly and it will work.'
+  }
+  if (/popup/.test(s)) {
+    return 'The sign-in window was blocked. Allow popups for this site, or try again — it will use a full-page redirect instead.'
+  }
+  return msgOf(e) || 'Sign-in failed.'
 }
 
 async function logEvent(

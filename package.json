@@ -14,7 +14,9 @@
     "rules:deploy": "firebase deploy --only firestore:rules,storage --project casaahome",
     "test": "tsx scripts/logic.test.ts",
     "emu": "firebase emulators:start --project casaahome",
-    "dev:emu": "VITE_USE_EMULATOR=true vite"
+    "dev:emu": "VITE_USE_EMULATOR=true vite",
+    "build:hosting": "DEPLOY_BASE=/ tsc -b && DEPLOY_BASE=/ vite build",
+    "deploy:hosting": "npm run build:hosting && firebase deploy --only hosting --project casaahome"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
