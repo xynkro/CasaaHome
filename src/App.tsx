@@ -93,7 +93,7 @@ export default function App() {
           <Empty
             icon="⛔"
             title="Not on the household list"
-            hint={`${user.email} is signed in but is not allowed to read this home. Add the address to config/access in Firestore, then reload.`}
+            hint={`${user.email} is signed in, but that address is not on the household list. Ask whoever set this up to add it under Settings → Who can get in, then reload. If that is you, sign in with the account you used first.`}
             action={<button className="btn btn-ghost" onClick={() => useStore.getState().signOutNow()}>Sign out</button>}
           />
         </div>

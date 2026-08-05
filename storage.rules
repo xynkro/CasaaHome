@@ -10,8 +10,12 @@ service firebase.storage {
       return request.auth != null
         && request.auth.token.email_verified == true
         && request.auth.token.email.lower() in [
-          'the.disruptive.comp@gmail.com'
-          // add household members here, lowercase, comma separated
+          'the.disruptive.comp@gmail.com',
+          'xynkro@gmail.com',
+          'sarah.sanusi@gmail.com'
+          // add household members here, lowercase, comma separated.
+          // This list is duplicated from Firestore config/access on purpose:
+          // Storage rules cannot call get() into Firestore. Keep them in step.
         ];
     }
 
