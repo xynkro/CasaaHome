@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store'
 import { uploadPhoto, imageSize } from '../lib/images'
+import { levelMetres } from '../types'
+import { roomsFromWalls, polygonArea } from '../lib/rooms'
 import type { Pt, Room, Wall } from '../types'
 import { Field, Sheet } from '../ui/primitives'
 
@@ -118,6 +120,7 @@ export default function PlanEditor() {
    */
   const dragRef = useRef<DragState | null>(null)
   const [hint, setHint] = useState<string | null>(null)
+  const [detected, setDetected] = useState<{ polygon: Pt[]; name: string; area: number }[] | null>(null)
 
   const bgUrl = plan.planImageUrl ?? plan.planImageData ?? localPlan
   const mpp = plan.metresPerPixel ?? null
@@ -312,9 +315,43 @@ export default function PlanEditor() {
 
     if (tool === 'marker') {
       if (!markerFor) { setHint('Choose which place you are marking first.'); return }
-      void saveLocation({ id: markerFor, pos: { x: toM(p[0]), y: 1.1, z: toM(p[1]) } })
+      const loc = locations.find(l => l.id === markerFor)
+      void saveLocation({ id: markerFor, pos: { x: toM(p[0]), y: levelMetres(loc?.level), z: toM(p[1]) } })
       setHint('Marker dropped.'); setMarkerFor('')
     }
+  }
+
+  /**
+   * Rooms are just the enclosed regions of the wall network, so there is no
+   * reason to make anyone draw them twice. Names are carried over from any
+   * existing room whose centroid falls inside a detected region.
+   */
+  const detectRooms = () => {
+    const found = roomsFromWalls(walls)
+    if (!found.length) {
+      setHint('No enclosed spaces found. Walls have to actually meet — check for gaps at the corners and across doorways.')
+      return
+    }
+    const centroid = (poly: Pt[]) => ({
+      x: poly.reduce((a, p) => a + p.x, 0) / poly.length,
+      z: poly.reduce((a, p) => a + p.z, 0) / poly.length,
+    })
+    const inside = (pt: { x: number; z: number }, poly: Pt[]) => {
+      let hit = false
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const a = poly[i], b = poly[j]
+        if ((a.z > pt.z) !== (b.z > pt.z) &&
+            pt.x < ((b.x - a.x) * (pt.z - a.z)) / (b.z - a.z) + a.x) hit = !hit
+      }
+      return hit
+    }
+    const taken = new Set<string>()
+    setDetected(found.map((polygon, i) => {
+      const c = centroid(polygon)
+      const match = rooms.find(r => !taken.has(r.id) && inside(c, r.polygon))
+      if (match) taken.add(match.id)
+      return { polygon, name: match?.name ?? `Room ${i + 1}`, area: Math.abs(polygonArea(polygon)) }
+    }))
   }
 
   const endChain = () => {
@@ -408,6 +445,9 @@ export default function PlanEditor() {
 
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <button className="btn btn-ghost px-2.5 py-1 text-xs" onClick={undo} disabled={!history.length}>↶ Undo</button>
+            {walls.length >= 3 && (
+              <button className="btn btn-ghost px-2.5 py-1 text-xs" onClick={detectRooms}>⌗ Detect rooms</button>
+            )}
             {(chain.length > 0 || rectStart) && (
               <button className="btn btn-ghost px-2.5 py-1 text-xs" onClick={endChain}>
                 {tool === 'room' ? 'Close outline' : 'Finish (Esc)'}
@@ -647,6 +687,44 @@ export default function PlanEditor() {
           Pick something you can trust — a printed dimension, or a door at 0.9 m.
           Everything else scales from this one number.
         </p>
+      </Sheet>
+
+      <Sheet
+        open={!!detected}
+        onClose={() => setDetected(null)}
+        wide
+        title={`Found ${detected?.length ?? 0} enclosed ${detected?.length === 1 ? 'space' : 'spaces'}`}
+        footer={
+          <div className="flex gap-2">
+            <button className="btn btn-ghost flex-1" onClick={() => setDetected(null)}>Cancel</button>
+            <button
+              className="btn btn-primary flex-[2]"
+              onClick={() => {
+                if (!detected) return
+                edit({ rooms: detected.map((d, i) => ({ id: uid(), name: d.name.trim() || `Room ${i + 1}`, polygon: d.polygon })) })
+                setDetected(null)
+                setHint(`${detected.length} rooms replaced from the walls.`)
+              }}
+            >Replace rooms</button>
+          </div>
+        }
+      >
+        <p className="text-[0.68rem] leading-relaxed text-ink-500">
+          These are the spaces your walls enclose. Names carry over where a detected space
+          matches one you had already. This replaces the whole room list.
+        </p>
+        <ul className="mt-3 space-y-2">
+          {(detected ?? []).map((d, i) => (
+            <li key={i} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={d.name}
+                onChange={e => setDetected(list => (list ?? []).map((x, k) => k === i ? { ...x, name: e.target.value } : x))}
+              />
+              <span className="tnum w-20 shrink-0 text-right text-[0.7rem] text-ink-500">{d.area.toFixed(1)} m²</span>
+            </li>
+          ))}
+        </ul>
       </Sheet>
 
       <Sheet

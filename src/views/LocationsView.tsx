@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store'
-import { LOCATION_KINDS, type LocationKind, type StorageLocation } from '../types'
+import { LOCATION_KINDS, LEVELS, levelLabel, type Level, type LocationKind, type StorageLocation } from '../types'
 import { stockStatus, STATUS_ORDER } from '../lib/stock'
 import { uploadPhoto, deletePhoto } from '../lib/images'
 import { Empty, Field, Sheet, StatusChip } from '../ui/primitives'
@@ -111,6 +111,11 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
           >
             <span className="w-4 shrink-0 text-center text-ink-500">{KIND_ICON[loc.kind]}</span>
             <span className="truncate text-sm font-medium text-ink-200">{loc.name}</span>
+            {loc.level && (
+              <span className="chip shrink-0 border-ink-600 bg-ink-800 text-[0.6rem] text-ink-400">
+                {levelLabel(loc.level)}
+              </span>
+            )}
             {loc.longTerm && (
               <span className="chip shrink-0 border-ink-600 bg-ink-800 text-[0.6rem] text-ink-400">long-term</span>
             )}
@@ -290,6 +295,13 @@ function PlaceEditor({ target, onClose }: { target: StorageLocation | 'new' | nu
             </select>
           </Field>
         </div>
+
+        <Field label="How high" hint="upper or lower?">
+          <select value={v('level') ?? ''} onChange={e => set('level', (e.target.value || null) as Level | null)}>
+            <option value="">Not set</option>
+            {LEVELS.map(l => <option key={l.key} value={l.key}>{l.label} — {l.hint}</option>)}
+          </select>
+        </Field>
 
         <Field label="Inside" hint="nest under another place">
           <select value={v('parentId') ?? ''} onChange={e => set('parentId', e.target.value || null)}>

@@ -41,6 +41,29 @@ export const LOCATION_KINDS: LocationKind[] = [
   'cabinet', 'drawer', 'shelf', 'fridge', 'freezer', 'wardrobe', 'store', 'box', 'rack', 'other',
 ]
 
+/**
+ * How high off the floor something sits.
+ *
+ * "Upper cupboard" and "the one under the sink" are the same cabinet to a
+ * database unless height is recorded, so this is the field that makes the two
+ * distinguishable — in the list, in search, and in the 3D view, where the
+ * massing is actually mounted at this height.
+ */
+export type Level = 'floor' | 'low' | 'counter' | 'eye' | 'high'
+
+export const LEVELS: { key: Level; label: string; hint: string; metres: number }[] = [
+  { key: 'floor',   label: 'Floor',        hint: 'under the sink, floor boxes', metres: 0.0 },
+  { key: 'low',     label: 'Low',          hint: 'drawers, base units',         metres: 0.35 },
+  { key: 'counter', label: 'Counter',      hint: 'worktop height',              metres: 0.9 },
+  { key: 'eye',     label: 'Upper',        hint: 'wall cupboards, eye level',   metres: 1.5 },
+  { key: 'high',    label: 'High',         hint: 'top shelves, above wardrobe', metres: 2.05 },
+]
+
+export const levelMetres = (l?: Level | null) =>
+  LEVELS.find(x => x.key === l)?.metres ?? 0
+export const levelLabel = (l?: Level | null) =>
+  LEVELS.find(x => x.key === l)?.label ?? null
+
 /** A physical place things live. Can nest (cabinet > shelf > box). */
 export interface StorageLocation {
   id: string
@@ -50,6 +73,8 @@ export interface StorageLocation {
   parentId: string | null
   /** Position in the 3D house, metres. y = height above floor. */
   pos?: { x: number; y: number; z: number } | null
+  /** Upper or lower? Drives the mount height in 3D and reads in the list. */
+  level?: Level | null
   photoUrls: string[]
   /**
    * The two shots that make a place findable: `closed` so you can recognise

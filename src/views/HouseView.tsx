@@ -4,6 +4,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { ContactShadows, Html, OrbitControls, PointerLockControls, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { useStore } from '../store'
+import { levelMetres } from '../types'
 import type { HousePlan, LocationKind, Room, StorageLocation, StockStatus, Wall } from '../types'
 import { STATUS_META, STATUS_ORDER, stockStatus } from '../lib/stock'
 import { Empty } from '../ui/primitives'
@@ -452,20 +453,24 @@ function Furniture({ loc, status, count, active, onSelect }: {
 }) {
   const beadRef = useRef<THREE.Mesh>(null)
   const [hovered, setHovered] = useState(false)
-  const [w, h, d] = MASSING[loc.kind] ?? MASSING.other
+  const [w, hFull, d] = MASSING[loc.kind] ?? MASSING.other
+  // Mounted units hang off the wall; a wall cupboard at eye level should not
+  // be drawn sitting on the floor, or upper and lower look identical.
+  const mount = levelMetres(loc.level)
+  const h = mount > 0 ? Math.min(hFull, 0.75) : hFull
   const alert = status !== 'ok'
   const colour = STATUS_META[status].hex
   const base = KIND_TINT[loc.kind] ?? KIND_TINT.other
 
   useFrame(({ clock }) => {
     if (!beadRef.current || !alert) return
-    beadRef.current.position.y = h + 0.3 + Math.sin(clock.getElapsedTime() * 2.2) * 0.035
+    beadRef.current.position.y = mount + h + 0.3 + Math.sin(clock.getElapsedTime() * 2.2) * 0.035
   })
 
   return (
     <group position={[loc.pos!.x, 0, loc.pos!.z]}>
       <mesh
-        position={[0, h / 2, 0]}
+        position={[0, mount + h / 2, 0]}
         onClick={e => { e.stopPropagation(); onSelect() }}
         onPointerOver={e => { e.stopPropagation(); setHovered(true) }}
         onPointerOut={() => setHovered(false)}
@@ -478,21 +483,29 @@ function Furniture({ loc, status, count, active, onSelect }: {
         />
       </mesh>
 
-      {/* A thin plinth reads as a shadow line and stops the box floating. */}
-      <mesh position={[0, 0.006, 0]}>
-        <boxGeometry args={[w + 0.05, 0.012, d + 0.05]} />
-        <meshStandardMaterial color="#A8AEB4" roughness={1} />
-      </mesh>
+      {/* Floor-standing units get a plinth; mounted ones get a bracket line
+          down to the floor so you can still see where they are in plan. */}
+      {mount > 0 ? (
+        <mesh position={[0, mount / 2, 0]}>
+          <boxGeometry args={[0.02, mount, 0.02]} />
+          <meshStandardMaterial color="#B4BAC0" roughness={1} />
+        </mesh>
+      ) : (
+        <mesh position={[0, 0.006, 0]}>
+          <boxGeometry args={[w + 0.05, 0.012, d + 0.05]} />
+          <meshStandardMaterial color="#A8AEB4" roughness={1} />
+        </mesh>
+      )}
 
       {alert && (
-        <mesh ref={beadRef} position={[0, h + 0.3, 0]}>
+        <mesh ref={beadRef} position={[0, mount + h + 0.3, 0]}>
           <sphereGeometry args={[0.09, 16, 12]} />
           <meshStandardMaterial color={colour} emissive={colour} emissiveIntensity={0.7} roughness={0.35} />
         </mesh>
       )}
 
       <Html
-        position={[0, h + (alert ? 0.55 : 0.28), 0]}
+        position={[0, mount + h + (alert ? 0.55 : 0.28), 0]}
         center
         distanceFactor={13}
         style={{ pointerEvents: 'none', transition: 'opacity .15s', opacity: active || hovered || alert ? 1 : 0.72 }}
