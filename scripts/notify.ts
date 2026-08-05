@@ -99,7 +99,14 @@ async function load() {
   const items = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() }) as Item).filter(i => !i.archived)
   const locations = locSnap.docs.map(d => ({ id: d.id, ...d.data() }) as StorageLocation)
   const settings: Settings = { ...DEFAULT_SETTINGS, ...(settingsSnap.data() as Settings | undefined) }
-  const chatId = String(tgSnap.data()?.chatId ?? '').trim()
+  // One or many destinations. A household group is the usual case; DMs and a
+  // group can coexist. `chatId` is the older single-value form, kept working.
+  const tg = tgSnap.data() ?? {}
+  const chatIds: string[] = [
+    ...(Array.isArray(tg.chatIds) ? tg.chatIds : []),
+    ...(tg.chatId ? [tg.chatId] : []),
+  ].map(String).map(s => s.trim()).filter(Boolean)
+  const uniqueChats = [...new Set(chatIds)]
   const state = (stateSnap.data() ?? {}) as {
     lastWeeklyDate?: string
     lastUrgentDate?: string
@@ -107,7 +114,7 @@ async function load() {
   }
   const outbox = outboxSnap.exists ? (outboxSnap.data() as { status?: string }) : null
 
-  return { items, locations, settings, chatId, state, outbox }
+  return { items, locations, settings, chatIds: uniqueChats, state, outbox }
 }
 
 // --- message builders ------------------------------------------------------
@@ -166,11 +173,13 @@ function useSoonMessage(entries: ReturnType<typeof buildUseSoon>) {
 // --- main ------------------------------------------------------------------
 
 async function main() {
-  const { items, locations, settings, chatId, state, outbox } = await load()
-  if (!chatId && !DRY) {
+  const { items, locations, settings, chatIds, state, outbox } = await load()
+  if (!chatIds.length && !DRY) {
     console.log('No chat ID configured yet — set it in the app under Settings › Telegram. Nothing sent.')
     return
   }
+  const targets = chatIds.length ? chatIds : ['dry-run']
+  const fanout = async (html: string) => { for (const id of targets) await send(id, html) }
 
   const now = sgNow()
   const locMap = new Map(locations.map(l => [l.id, l]))
@@ -208,13 +217,13 @@ async function main() {
       `\n<a href="${APP_URL}">Open CasaaHome</a>`,
     ].filter(Boolean).join('\n')
 
-    await send(chatId, header)
+    await fanout(header)
     for (const trip of ['sg', 'jb', 'online'] as TripKey[]) {
       const msg = tripMessage(trip, plan, items)
-      if (msg) await send(chatId, msg)
+      if (msg) await fanout(msg)
     }
     const use = useSoonMessage(useSoon)
-    if (use) await send(chatId, use)
+    if (use) await fanout(use)
 
     sent.push(manualRequest ? 'manual' : 'weekly')
   } else if (isUrgent) {
@@ -222,7 +231,7 @@ async function main() {
       const loc = i.locationId ? locMap.get(i.locationId)?.name : null
       return `• ${esc(i.name)}${loc ? ` — <i>${esc(loc)}</i>` : ''}`
     })
-    await send(chatId, [
+    await fanout([
       '⚠️ <b>Just ran out</b>',
       `<i>${now.label}</i>`,
       '',

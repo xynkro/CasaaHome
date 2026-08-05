@@ -24,7 +24,7 @@ export default function SettingsView() {
 
   const [access, setAccess] = useState<string[]>([])
   const [newEmail, setNewEmail] = useState('')
-  const [chatId, setChatId] = useState('')
+  const [chatIds, setChatIds] = useState('')
   const [tgSaved, setTgSaved] = useState(false)
 
   useEffect(() => {
@@ -32,7 +32,9 @@ export default function SettingsView() {
       setAccess((s.data()?.emails as string[]) ?? [])
     }, () => {})
     const u2 = onSnapshot(doc(db, 'config', 'telegram'), s => {
-      setChatId(String(s.data()?.chatId ?? ''))
+      const d = s.data() ?? {}
+      const list = [...(Array.isArray(d.chatIds) ? d.chatIds : []), ...(d.chatId ? [d.chatId] : [])]
+      setChatIds([...new Set(list.map(String))].join(', '))
     }, () => {})
     return () => { u1(); u2() }
   }, [])
@@ -131,15 +133,17 @@ export default function SettingsView() {
               {DAYS.map((day, i) => <option key={day} value={i}>{day}</option>)}
             </select>
           </Field>
-          <Field label="Chat ID" hint="your DM with the bot">
+          <Field label="Send to" hint="chat IDs, comma separated">
             <input
               type="text"
-              inputMode="numeric"
-              placeholder="e.g. 123456789"
-              value={chatId}
-              onChange={e => { setChatId(e.target.value); setTgSaved(false) }}
+              placeholder="-1001234567890, 922547929"
+              value={chatIds}
+              onChange={e => { setChatIds(e.target.value); setTgSaved(false) }}
               onBlur={async () => {
-                await setDoc(doc(db, 'config', 'telegram'), { chatId: chatId.trim() }, { merge: true })
+                const list = chatIds.split(',').map(s => s.trim()).filter(Boolean)
+                // chatId is the older single-value form; clear it so the two
+                // cannot drift apart and double-send.
+                await setDoc(doc(db, 'config', 'telegram'), { chatIds: list, chatId: '' }, { merge: true })
                 setTgSaved(true)
               }}
             />
@@ -154,12 +158,12 @@ export default function SettingsView() {
           />
           Send the weekly digest
         </label>
-        {tgSaved && <p className="mt-1 text-[0.68rem] text-emerald-400">Chat ID saved.</p>}
-        <ol className="mt-2 list-decimal space-y-1 pl-4 text-[0.68rem] leading-relaxed text-ink-500">
-          <li>Message <span className="text-ink-300">@BotFather</span> on Telegram → <code>/newbot</code> → copy the token.</li>
-          <li>Put the token in the GitHub repo as the secret <code>TELEGRAM_BOT_TOKEN</code>.</li>
-          <li>Send your new bot any message, then paste your numeric chat ID above.</li>
-        </ol>
+        {tgSaved && <p className="mt-1 text-[0.68rem] text-emerald-400">Saved.</p>}
+        <p className="mt-2 text-[0.68rem] leading-relaxed text-ink-500">
+          A group ID starts with a minus sign; a personal one does not. To add a group,
+          invite the bot to it and send <code>/start@LVHome1646Bot</code> there — bots have
+          privacy mode on by default and cannot see ordinary group chatter until addressed.
+        </p>
       </Group>
 
       <Group title="Who can get in">
