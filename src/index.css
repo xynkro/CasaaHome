@@ -105,3 +105,8 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 @media (prefers-reduced-motion: reduce) {
   .rise, .sheet-up { animation: none; }
 }
+
+/* touch-action is not an inherited property, so setting it on the <svg> alone
+   leaves every child at `auto` — and the browser claims a drag on a shape as a
+   scroll, cancelling the gesture before it starts. Pin it on the subtree. */
+.plan-canvas, .plan-canvas * { touch-action: none; }

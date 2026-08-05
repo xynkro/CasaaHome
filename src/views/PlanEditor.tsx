@@ -191,9 +191,34 @@ export default function PlanEditor() {
     return [unsx(e.clientX - r.left), unsx(e.clientY - r.top)]
   }
 
+  /**
+   * Track the gesture on `window`, not on the SVG.
+   *
+   * Two things break element-level tracking on a phone. `touch-action` is not
+   * an inherited property, so the <polygon> and <line> children were still
+   * `auto` even though the <svg> was `none` — the browser claimed the gesture
+   * as a scroll and fired pointercancel before a single move landed. And
+   * pointer capture retargets events in ways that depend on the element the
+   * gesture began on. Listening on window sidesteps both.
+   */
   const startDrag = (d: DragState) => {
     pushHistory(walls, rooms)
     dragRef.current = d
+
+    const move = (ev: PointerEvent) => {
+      if (!dragRef.current) return
+      ev.preventDefault()
+      applyDrag(pointAt(ev))
+    }
+    const stop = () => {
+      dragRef.current = null
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', stop)
+      window.removeEventListener('pointercancel', stop)
+    }
+    window.addEventListener('pointermove', move, { passive: false })
+    window.addEventListener('pointerup', stop)
+    window.addEventListener('pointercancel', stop)
   }
 
   const applyDrag = (to: P) => {
@@ -236,7 +261,7 @@ export default function PlanEditor() {
   }
 
   const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (dragRef.current) { applyDrag(pointAt(e)); return }
+    if (dragRef.current) return          // window listeners own the gesture
     if (tool === 'select') return
     const raw = pointAt(e)
     const from = chain[chain.length - 1] ?? rectStart ?? undefined
@@ -424,7 +449,7 @@ export default function PlanEditor() {
 
               <svg
                 ref={svgRef}
-                className="absolute inset-0 size-full touch-none"
+                className="plan-canvas absolute inset-0 size-full"
                 onPointerDown={onDown}
                 onPointerMove={onMove}
                 onPointerUp={onUp}
@@ -445,7 +470,6 @@ export default function PlanEditor() {
                         onPointerDown={e => {
                           if (tool !== 'select') return
                           e.stopPropagation()
-                          ;(e.target as Element).setPointerCapture?.(e.pointerId)
                           setSelRoom(r.id); setSelected(null)
                           startDrag({ kind: 'room', id: r.id, from: pointAt(e), walls, rooms })
                         }}
@@ -456,8 +480,7 @@ export default function PlanEditor() {
                           style={{ cursor: 'grab' }}
                           onPointerDown={e => {
                             e.stopPropagation()
-                            ;(e.target as Element).setPointerCapture?.(e.pointerId)
-                            startDrag({ kind: 'roomVertex', id: r.id, index: i, from: pointAt(e), walls, rooms })
+                              startDrag({ kind: 'roomVertex', id: r.id, index: i, from: pointAt(e), walls, rooms })
                           }} />
                       ))}
                     </g>
@@ -478,7 +501,6 @@ export default function PlanEditor() {
                         onPointerDown={e => {
                           if (tool !== 'select') return
                           e.stopPropagation()
-                          ;(e.target as Element).setPointerCapture?.(e.pointerId)
                           setSelected(w.id); setSelRoom(null)
                           startDrag({ kind: 'wall', id: w.id, from: pointAt(e), walls, rooms })
                         }} />
@@ -488,8 +510,7 @@ export default function PlanEditor() {
                           style={{ cursor: 'grab' }}
                           onPointerDown={e => {
                             e.stopPropagation()
-                            ;(e.target as Element).setPointerCapture?.(e.pointerId)
-                            startDrag({ kind: 'wallEnd', id: w.id, end, from: pointAt(e), walls, rooms })
+                              startDrag({ kind: 'wallEnd', id: w.id, end, from: pointAt(e), walls, rooms })
                           }} />
                       ))}
                     </g>

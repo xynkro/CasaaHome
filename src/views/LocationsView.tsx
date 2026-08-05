@@ -6,6 +6,7 @@ import { stockStatus, STATUS_ORDER } from '../lib/stock'
 import { uploadPhoto, deletePhoto } from '../lib/images'
 import { Empty, Field, Sheet, StatusChip } from '../ui/primitives'
 import { ItemRow } from '../ui/ItemRow'
+import CaptureSweep, { pendingShots } from './CaptureSweep'
 import type { StockStatus } from '../types'
 
 const KIND_ICON: Record<LocationKind, string> = {
@@ -21,6 +22,7 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
 
   const [editing, setEditing] = useState<StorageLocation | 'new' | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [sweep, setSweep] = useState(false)
 
   const locMap = useMemo(() => new Map(locations.map(l => [l.id, l])), [locations])
 
@@ -88,6 +90,7 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
   }, [roots])
 
   const unfiled = itemsByLoc.get('__unfiled') ?? []
+  const missingShots = useMemo(() => pendingShots(locations).length, [locations])
 
   const renderPlace = (loc: StorageLocation, depth: number) => {
     const kids = childrenOf(loc.id)
@@ -149,6 +152,22 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
         Cupboards, drawers, the store room. Nest them — a cabinet can hold shelves, a shelf can hold boxes.
       </p>
 
+      {missingShots > 0 && (
+        <button
+          onClick={() => setSweep(true)}
+          className="panel mt-3 flex w-full items-center gap-3 px-3 py-3 text-left transition hover:border-brass-500/50"
+        >
+          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-brass-400/12 text-brass-400">📷</div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium text-ink-200">Run a photo sweep</div>
+            <div className="truncate text-[0.7rem] text-ink-400">
+              {missingShots} shot{missingShots === 1 ? '' : 's'} still wanted — the app tells you which place and how to frame it
+            </div>
+          </div>
+          <span className="text-ink-500">→</span>
+        </button>
+      )}
+
       {locations.length === 0 ? (
         <div className="mt-5">
           <Empty
@@ -190,6 +209,8 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
         target={editing}
         onClose={() => setEditing(null)}
       />
+
+      <CaptureSweep open={sweep} onClose={() => setSweep(false)} />
     </div>
   )
 }

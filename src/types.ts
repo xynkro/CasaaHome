@@ -51,6 +51,12 @@ export interface StorageLocation {
   /** Position in the 3D house, metres. y = height above floor. */
   pos?: { x: number; y: number; z: number } | null
   photoUrls: string[]
+  /**
+   * The two shots that make a place findable: `closed` so you can recognise
+   * it from across the room, `open` so you can see what is in it. Named slots
+   * rather than a flat list, so the capture sweep knows what is still missing.
+   */
+  shots?: { closed?: string | null; open?: string | null }
   notes?: string
   /** Long-term storage: things here get "use me before you forget" nudges. */
   longTerm?: boolean
