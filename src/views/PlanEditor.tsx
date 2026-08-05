@@ -39,7 +39,15 @@ export default function PlanEditor() {
   const [roomName, setRoomName] = useState('')
   const [placeFor, setPlaceFor] = useState<string>('')
   const [hint, setHint] = useState<string | null>(null)
+  /**
+   * Cloud Storage needs a billing plan; tracing does not. When the upload is
+   * refused we keep the picked file as a local object URL so the plan can
+   * still be traced today — the geometry is what matters and that lives in
+   * Firestore. The image can be uploaded later and nothing is invalidated.
+   */
+  const [localPlan, setLocalPlan] = useState<string | null>(null)
 
+  const bgUrl = plan.planImageUrl ?? plan.planImageData ?? localPlan
   const mpp = plan.metresPerPixel ?? null
   const imgW = plan.imageW ?? 0
   const imgH = plan.imageH ?? 0
@@ -62,14 +70,36 @@ export default function PlanEditor() {
   const unsx = (screen: number) => screen / scale
 
   const upload = async (files: FileList | null) => {
-    if (!files?.length) return
+    const file = files?.[0]
+    if (!file) return
     setBusy(true)
     try {
-      const url = await uploadPhoto(files[0], 'plans', 'floorplan')
+      let url: string
+      let cloud = true
+      try {
+        url = await uploadPhoto(file, 'plans', 'floorplan')
+      } catch {
+        url = URL.createObjectURL(file)
+        cloud = false
+      }
       const { w, h } = await imageSize(url)
-      await savePlan({ planImageUrl: url, imageW: w, imageH: h })
-      setHint('Now set the scale: pick the Scale tool and click two points a known distance apart.')
+      if (cloud) {
+        await savePlan({ planImageUrl: url, imageW: w, imageH: h })
+      } else {
+        setLocalPlan(url)
+        await savePlan({ imageW: w, imageH: h })
+      }
+      setHint(cloud
+        ? 'Now set the scale: pick the Scale tool and click two points a known distance apart.'
+        : 'Could not upload the image (Cloud Storage is not enabled yet), so it is loaded locally for this session. Tracing works normally and everything you draw is saved.')
     } finally { setBusy(false) }
+  }
+
+  /** Trace on a blank grid, no image required. 2 cm per pixel over ~16 m. */
+  const startBlank = async () => {
+    await savePlan({ metresPerPixel: 0.02, imageW: 800, imageH: 800 })
+    setTool('wall')
+    setHint('Blank canvas at 2 cm per pixel. Click corner to corner to trace walls; double-click to end a run.')
   }
 
   /** Snap to any existing wall endpoint so rooms actually close up. */
@@ -139,6 +169,9 @@ export default function PlanEditor() {
     setChain([])
   }
 
+  // Ready to trace once there is either a backdrop or a scale to draw against.
+  const ready = !!bgUrl || !!mpp
+
   const unplaced = useMemo(() => locations.filter(l => !l.pos), [locations])
   const placed = useMemo(() => locations.filter(l => l.pos), [locations])
 
@@ -152,7 +185,7 @@ export default function PlanEditor() {
         Upload your 2D plan, set the scale once, then trace the walls. Everything you draw becomes the 3D house.
       </p>
 
-      {!plan.planImageUrl ? (
+      {!ready ? (
         <div className="panel mt-5 flex flex-col items-center gap-3 px-6 py-12 text-center">
           <div className="text-3xl opacity-60">🗺</div>
           <div className="text-sm font-semibold text-ink-200">No plan uploaded</div>
@@ -160,9 +193,18 @@ export default function PlanEditor() {
             A photo or PDF export of your floorplan works. Straight-on and reasonably square is best —
             a phone photo of a printed plan is fine.
           </p>
-          <button className="btn btn-primary" disabled={busy} onClick={() => fileRef.current?.click()}>
-            {busy ? 'Uploading…' : 'Upload floorplan'}
-          </button>
+          <div className="flex flex-wrap justify-center gap-2">
+            <button className="btn btn-primary" disabled={busy} onClick={() => fileRef.current?.click()}>
+              {busy ? 'Loading…' : 'Upload floorplan'}
+            </button>
+            <button className="btn btn-ghost" disabled={busy} onClick={startBlank}>
+              Trace without an image
+            </button>
+          </div>
+          <p className="max-w-sm text-[0.68rem] leading-relaxed text-ink-500">
+            The image is only a tracing backdrop — walls, rooms and markers are stored as
+            real-world metres, so you can add or replace the plan later without losing work.
+          </p>
         </div>
       ) : (
         <>
@@ -186,7 +228,7 @@ export default function PlanEditor() {
               </button>
             )}
             <button className="chip shrink-0 border-ink-600 bg-ink-800 text-ink-400" onClick={() => fileRef.current?.click()}>
-              Replace plan
+              {bgUrl ? 'Replace plan' : 'Add plan image'}
             </button>
           </div>
 
@@ -196,7 +238,14 @@ export default function PlanEditor() {
 
           <div ref={wrapRef} className="panel mt-3 overflow-hidden p-0">
             <div className="relative" style={{ aspectRatio: imgW && imgH ? `${imgW} / ${imgH}` : '4 / 3' }}>
-              <img src={plan.planImageUrl} alt="Floorplan" className="absolute inset-0 size-full object-contain opacity-55" />
+              {bgUrl
+                ? <img src={bgUrl} alt="Floorplan" className="absolute inset-0 size-full object-contain opacity-55" />
+                : <div className="absolute inset-0" style={{
+                    backgroundImage:
+                      'linear-gradient(to right, #ffffff0d 1px, transparent 1px),' +
+                      'linear-gradient(to bottom, #ffffff0d 1px, transparent 1px)',
+                    backgroundSize: `${sx(25)}px ${sx(25)}px`,
+                  }} />}
               <svg
                 className="absolute inset-0 size-full touch-none"
                 onClick={onCanvasClick}

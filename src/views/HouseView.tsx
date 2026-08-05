@@ -124,7 +124,6 @@ export default function HouseView({ onOpenItem }: { onOpenItem: (id: string) => 
         {/* Recentred on the origin so orbit, pan and contact shadow all share
             one pivot regardless of where the plan was drawn. */}
         <group position={[-bounds.cx, 0, -bounds.cz]}>
-          <Slab bounds={bounds} />
           {plan.rooms.map((r, i) => (
             <RoomFloor key={r.id} room={r} tint={FLOOR_TINTS[i % FLOOR_TINTS.length]} />
           ))}
@@ -341,26 +340,24 @@ function FitCamera({ bounds, wallHeight, mode }: {
   return null
 }
 
-/** The ground slab the whole plan sits on, with a small margin. */
-function Slab({ bounds }: { bounds: Bounds }) {
-  const w = (bounds.maxX - bounds.minX) + 0.9
-  const d = (bounds.maxZ - bounds.minZ) + 0.9
-  return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[bounds.cx, -0.015, bounds.cz]}>
-      <planeGeometry args={[w, d]} />
-      <meshStandardMaterial color="#DADFE4" roughness={1} />
-    </mesh>
-  )
-}
-
 function RoomFloor({ room, tint }: { room: Room; tint: string }) {
-  const geo = useMemo(() => {
+  /**
+   * Floors are extruded rather than flat planes, and there is deliberately no
+   * bounding-box ground slab: a plan is rarely a rectangle, and a rectangular
+   * slab under an L-shaped flat reads as one enormous empty room. Building the
+   * base out of the rooms themselves gives the true footprint for free.
+   */
+  const { geo, slab } = useMemo(() => {
     const shape = new THREE.Shape()
     room.polygon.forEach((pt, i) => (i === 0 ? shape.moveTo(pt.x, pt.z) : shape.lineTo(pt.x, pt.z)))
     shape.closePath()
+
     const g = new THREE.ShapeGeometry(shape)
     g.rotateX(Math.PI / 2) // authored in XY, laid flat on XZ
-    return g
+
+    const e = new THREE.ExtrudeGeometry(shape, { depth: 0.16, bevelEnabled: false })
+    e.rotateX(Math.PI / 2)
+    return { geo: g, slab: e }
   }, [room.polygon])
 
   const centroid = useMemo(() => {
@@ -373,6 +370,9 @@ function RoomFloor({ room, tint }: { room: Room; tint: string }) {
 
   return (
     <group>
+      <mesh geometry={slab} position={[0, 0.008, 0]}>
+        <meshStandardMaterial color="#CDD3D9" roughness={1} />
+      </mesh>
       <mesh geometry={geo} position={[0, 0.012, 0]}>
         <meshStandardMaterial color={room.color ?? tint} roughness={0.95} side={THREE.DoubleSide} />
       </mesh>

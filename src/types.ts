@@ -140,6 +140,12 @@ export interface Room {
 export interface HousePlan {
   /** Storage path + download URL of the uploaded 2D floorplan image. */
   planImageUrl?: string | null
+  /**
+   * Inline backdrop as a data URL, for when Cloud Storage is not available.
+   * Firestore caps a document at 1 MB, so keep this well under ~700 KB —
+   * line art quantised to a small palette compresses to around 100 KB.
+   */
+  planImageData?: string | null
   /** Metres per image pixel, from the calibration step. */
   metresPerPixel?: number | null
   /** Image natural size in px, so the ground plane matches. */
