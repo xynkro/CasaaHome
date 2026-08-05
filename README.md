@@ -84,6 +84,19 @@ or more prices on an item it routes to the cheapest, normalising MYR to SGD. Wit
 none, it falls back to a per-category default. Shopee always gets a working deep link
 (a search, or the direct product URL once you paste one in).
 
+**Shopee sale timing.** Shopee runs campaigns on the double dates — 1.1, 2.2 … 12.12 —
+open the day either side. The digest names the next one, and holds back anything merely
+*low* until it arrives (default: if it is within 10 days). Anything you have actually run
+out of is bought now, because running out beats saving a dollar. When a window is live the
+digest says so at the top.
+
+**Shopee versus the shops.** Online and in-store are separate sections, and any line with
+two or more recorded prices shows the comparison inline — `Shopee $4.20 vs NTUC $5.90 →
+saves ~$1.70` — so the routing is auditable rather than magic.
+
+**Per-item alerting.** Each item is *normal* (weekly digest), *urgent* (pinged the day it
+goes low) or *never* (kept out of Telegram entirely). Spare screws do not need announcing.
+
 **The JB rule.** A JB run costs petrol, tolls and a queue. If the JB basket is under
 `jbMinBasketSgd`, those items are folded back into the Singapore list instead and the
 digest says so.
@@ -99,7 +112,9 @@ The notifier runs hourly and usually sends nothing. It sends when:
 - the weekly digest day arrives (configurable, default Thursday, after 08:00 SGT) —
   header, then one message per trip, then a use-it-up message
 - something has newly hit zero (at most one such alert a day, 08:00–21:00 SGT)
-- you tapped **Ask the bot to send it** on the Shopping tab
+- you tapped **Ask the bot to send it** on the Shopping tab, or **Send via bot** on an item
+  (an item page also has **Share now**, which opens Telegram with the text ready and needs
+  no bot at all)
 
 Preview without sending anything: **Actions → Telegram notifier → Run workflow →
 dry run ✓**, or locally:

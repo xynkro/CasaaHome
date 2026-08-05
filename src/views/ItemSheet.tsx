@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { doc, setDoc } from 'firebase/firestore'
+import { db } from '../firebase'
 import { useStore, locationPath } from '../store'
 import {
   DEFAULT_CATEGORIES, STORES, UNITS,
@@ -137,6 +139,8 @@ export default function ItemSheet({ itemId, onClose }: { itemId: string | null; 
       {item.notes && <p className="mt-3 whitespace-pre-wrap text-xs leading-relaxed text-ink-300">{item.notes}</p>}
 
       <Photos item={item} onSave={saveItem} />
+
+      <TelegramActions item={item} />
 
       <div className="mt-3 flex flex-wrap gap-2">
         {(['shopee', 'ntuc', 'giant_jb'] as StoreKey[]).map(s => {
@@ -360,6 +364,17 @@ function EditForm({ item, onSave }: { item: Item; onSave: (p: Partial<Item>) => 
 
       <Field label="Notes"><textarea rows={2} value={v('notes') ?? ''} onChange={e => set('notes', e.target.value)} /></Field>
 
+      <Field label="Telegram alerts" hint="when to ping the group">
+        <select
+          value={v('notify') ?? 'default'}
+          onChange={e => set('notify', e.target.value as Item['notify'])}
+        >
+          <option value="default">Normal — appears in the weekly list</option>
+          <option value="urgent">Urgent — ping the day it runs low</option>
+          <option value="never">Never mention this one</option>
+        </select>
+      </Field>
+
       <div className="flex flex-wrap gap-3 text-xs">
         <Toggle label="Perishable" checked={!!v('perishable')} onChange={b => set('perishable', b)} />
         <Toggle
@@ -466,6 +481,43 @@ function PriceEditor({ refs, myrPerSgd, onChange }: {
         No retailer here publishes a usable price API, so prices are whatever you record.
         Two or more and the shopping list routes you to the cheaper one automatically.
       </p>
+    </div>
+  )
+}
+
+function TelegramActions({ item }: { item: Item }) {
+  const [queued, setQueued] = useState(false)
+  const locations = useStore(s => s.locations)
+  const plan = useStore(s => s.plan)
+  const locMap = useMemo(() => new Map(locations.map(l => [l.id, l])), [locations])
+
+  const text = [
+    item.brand ? `${item.brand} ${item.name}` : item.name,
+    `${locationPath(item.locationId, locMap, plan)}`,
+    `Have ${item.qty} ${item.unit} (min ${item.minQty}, par ${item.parLevel})`,
+  ].join('\n')
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {/* Instant, and needs no bot: opens Telegram with the text ready. */}
+      <a
+        className="btn btn-ghost text-xs"
+        href={`https://t.me/share/url?url=&text=${encodeURIComponent(text)}`}
+        target="_blank"
+        rel="noreferrer noopener"
+      >Share now ↗</a>
+      <button
+        className="btn btn-ghost text-xs"
+        disabled={queued}
+        onClick={async () => {
+          await setDoc(doc(db, 'telegram', 'outbox'), {
+            status: 'pending', kind: 'item', itemId: item.id,
+            requestedAt: new Date().toISOString(),
+            requestedBy: useStore.getState().user?.email ?? 'app',
+          })
+          setQueued(true)
+        }}
+      >{queued ? 'Bot will send it ✓' : 'Send via bot'}</button>
     </div>
   )
 }

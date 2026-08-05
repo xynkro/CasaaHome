@@ -92,6 +92,13 @@ export interface Item {
   /** Cached consumption estimate, units/day. Recomputed from events. */
   burnPerDay?: number | null
 
+  /**
+   * Per-item alerting. 'urgent' pings the moment it goes low rather than
+   * waiting for the weekly digest; 'never' keeps it out of Telegram entirely
+   * (spare screws do not need announcing).
+   */
+  notify?: 'default' | 'urgent' | 'never'
+
   archived?: boolean
   createdAt: string
   updatedAt: string
@@ -175,6 +182,10 @@ export interface ShoppingLine {
   url?: string | null
   /** Cheaper elsewhere: set when we routed away from the default store. */
   savingNote?: string | null
+  /** Every price we know for this item, so the message can show the compare. */
+  alternatives?: { store: StoreKey; sgd: number }[]
+  /** How much the chosen store beats the dearest known one, SGD. */
+  saving?: number | null
 }
 
 // --- Settings -------------------------------------------------------------
@@ -201,6 +212,12 @@ export interface Settings {
   staleVerifyDays: number
   weeklyDigestDay: number // 0=Sun .. 6=Sat
   telegramEnabled: boolean
+  /** Skip the weekly digest unless at least this many things need buying. */
+  minLinesForDigest: number
+  /** Ping the same day when something runs out. */
+  alertOnOut: boolean
+  /** Hold back online orders when a Shopee sale is within this many days. */
+  saleWaitDays: number
   updatedAt?: string
 }
 
@@ -215,6 +232,9 @@ export const DEFAULT_SETTINGS: Settings = {
   staleVerifyDays: 45,
   weeklyDigestDay: 4, // Thursday — gives you the weekend to shop
   telegramEnabled: true,
+  minLinesForDigest: 1,
+  alertOnOut: true,
+  saleWaitDays: 10,
 }
 
 export const DEFAULT_CATEGORIES = [

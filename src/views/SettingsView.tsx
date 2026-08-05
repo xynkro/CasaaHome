@@ -149,15 +149,29 @@ export default function SettingsView() {
             />
           </Field>
         </div>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <Field label="Skip digest below" hint="items">
+            <input type="number" value={v('minLinesForDigest')} onChange={e => set('minLinesForDigest', Number(e.target.value))} />
+          </Field>
+          <Field label="Wait for a sale up to" hint="days">
+            <input type="number" value={v('saleWaitDays')} onChange={e => set('saleWaitDays', Number(e.target.value))} />
+          </Field>
+        </div>
         <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-ink-300">
-          <input
-            type="checkbox"
-            className="size-4 accent-[#E8A33D]"
-            checked={v('telegramEnabled')}
-            onChange={e => set('telegramEnabled', e.target.checked)}
-          />
+          <input type="checkbox" className="size-4 accent-[#E8A33D]"
+            checked={v('telegramEnabled')} onChange={e => set('telegramEnabled', e.target.checked)} />
           Send the weekly digest
         </label>
+        <label className="mt-1 flex cursor-pointer items-center gap-2 text-xs text-ink-300">
+          <input type="checkbox" className="size-4 accent-[#E8A33D]"
+            checked={v('alertOnOut')} onChange={e => set('alertOnOut', e.target.checked)} />
+          Ping the same day something runs out
+        </label>
+        <p className="mt-1 text-[0.68rem] leading-relaxed text-ink-500">
+          Shopee runs its campaigns on the double dates — 1.1, 2.2 … 12.12, open the day either
+          side. Anything merely low is held back for the next one; anything you have actually run
+          out of is bought now regardless.
+        </p>
         {tgSaved && <p className="mt-1 text-[0.68rem] text-emerald-400">Saved.</p>}
         <p className="mt-2 text-[0.68rem] leading-relaxed text-ink-500">
           A group ID starts with a minus sign; a personal one does not. To add a group,

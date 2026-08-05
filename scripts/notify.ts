@@ -17,11 +17,12 @@ import {
   DEFAULT_SETTINGS,
   type Item, type Settings, type StorageLocation, type TripKey,
 } from '../src/types'
-import { buildShoppingPlan, buildUseSoon } from '../src/lib/shopping'
-import { shopeeSearch } from '../src/lib/links'
+import { buildShoppingPlan, buildUseSoon, shopeeSale, shouldWaitForSale } from '../src/lib/shopping'
+import { shopeeSearch, storeShort } from '../src/lib/links'
 import { stockStatus } from '../src/lib/stock'
 
 const TZ = 'Asia/Singapore'
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 const APP_URL = process.env.APP_URL || 'https://xynkro.github.io/CasaaHome/'
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const DRY = process.env.DRY_RUN === 'true'
@@ -51,12 +52,13 @@ const esc = (s: string) =>
 
 function sgNow() {
   const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: TZ, weekday: 'short', day: '2-digit', month: 'short',
+    timeZone: TZ, weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit', hour12: false,
   }).formatToParts(new Date())
   const get = (t: string) => parts.find(p => p.type === t)?.value ?? ''
   const dayIdx = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(get('weekday'))
   return {
+    y: Number(get('year')), m: MONTHS.indexOf(get('month')) + 1, d: Number(get('day')),
     dayOfWeek: dayIdx,
     hour: Number(get('hour')),
     label: `${get('weekday')} ${get('day')} ${get('month')}, ${get('hour')}:${get('minute')} SGT`,
@@ -112,7 +114,9 @@ async function load() {
     lastUrgentDate?: string
     notifiedOut?: Record<string, string>
   }
-  const outbox = outboxSnap.exists ? (outboxSnap.data() as { status?: string }) : null
+  const outbox = outboxSnap.exists
+    ? (outboxSnap.data() as { status?: string; kind?: string; itemId?: string })
+    : null
 
   return { items, locations, settings, chatIds: uniqueChats, state, outbox }
 }
@@ -120,16 +124,42 @@ async function load() {
 // --- message builders ------------------------------------------------------
 
 const TRIP: Record<TripKey, { head: string; note: string }> = {
-  sg: { head: '🛒 <b>Singapore run</b>', note: 'FairPrice / nearby' },
-  jb: { head: '🚗 <b>JB run</b>', note: 'Giant · AEON — bring the boot' },
-  online: { head: '📦 <b>Order online</b>', note: 'Shopee' },
+  sg: { head: '🛒 <b>In store — Singapore</b>', note: 'FairPrice / nearby' },
+  jb: { head: '🚗 <b>In store — JB</b>', note: 'Giant · AEON, bring the boot' },
+  online: { head: '📦 <b>Online — Shopee</b>', note: '' },
 }
 
-function tripMessage(trip: TripKey, plan: ReturnType<typeof buildShoppingPlan>, items: Item[]) {
+/** "Shopee $4.20 vs NTUC $5.90" — only when two or more prices are known. */
+function compareLine(l: ReturnType<typeof buildShoppingPlan>['lines'][number]): string | null {
+  const alts = l.alternatives ?? []
+  if (alts.length < 2) return null
+  const bits = alts.slice(0, 3).map(a => `${storeShort(a.store)} $${a.sgd.toFixed(2)}`)
+  const saving = l.saving && l.saving > 0.05 ? ` → saves ~$${l.saving.toFixed(2)}` : ''
+  return `${bits.join(' vs ')}${saving}`
+}
+
+function tripMessage(
+  trip: TripKey,
+  plan: ReturnType<typeof buildShoppingPlan>,
+  items: Item[],
+  sale: ReturnType<typeof shopeeSale>,
+  settings: Settings,
+) {
   const lines = plan.byTrip[trip]
   if (!lines.length) return null
 
-  const out = [TRIP[trip].head, `<i>${TRIP[trip].note}</i>`, '']
+  const out = [TRIP[trip].head]
+  if (TRIP[trip].note) out.push(`<i>${TRIP[trip].note}</i>`)
+
+  if (trip === 'online') {
+    out.push(sale.live
+      ? `🔥 <i>${sale.label} sale is on today — order now.</i>`
+      : `<i>Next Shopee sale: ${sale.label}, in ${sale.daysUntilStart} ${sale.daysUntilStart === 1 ? 'day' : 'days'}.</i>`)
+  }
+  out.push('')
+
+  const now: string[] = []
+  const later: string[] = []
   for (const l of lines) {
     const item = items.find(i => i.id === l.itemId)
     const price = l.estSgd ? ` — ~S$${l.estSgd.toFixed(2)}` : ''
@@ -138,8 +168,15 @@ function tripMessage(trip: TripKey, plan: ReturnType<typeof buildShoppingPlan>, 
     const label = trip === 'online' && item
       ? `<a href="${esc(shopeeSearch(item))}">${name}</a>`
       : name
-    out.push(`• ${label} × ${l.qty} ${esc(l.unit)}${price}${flag}`)
-    if (l.savingNote) out.push(`   <i>${esc(l.savingNote)}</i>`)
+    const row = [`• ${label} × ${l.qty} ${esc(l.unit)}${price}${flag}`]
+    const cmp = compareLine(l)
+    if (cmp) row.push(`   <i>${esc(cmp)}</i>`)
+    ;(shouldWaitForSale(l, sale, settings.saleWaitDays) ? later : now).push(...row)
+  }
+
+  out.push(...now)
+  if (later.length) {
+    out.push('', `⏳ <b>Can wait for ${sale.label}</b> <i>(${sale.daysUntilStart}d away)</i>`, ...later)
   }
   const total = plan.totals[trip]
   if (total > 0) out.push('', `<b>~S$${total.toFixed(2)}</b>`)
@@ -185,25 +222,55 @@ async function main() {
   const locMap = new Map(locations.map(l => [l.id, l]))
   const plan = buildShoppingPlan(items, settings)
   const useSoon = buildUseSoon(items, locMap, settings)
+  const sale = shopeeSale(now.y, now.m, now.d)
 
   const manualRequest = outbox?.status === 'pending'
+  const manualItem = manualRequest && outbox?.kind === 'item' ? outbox.itemId : null
   const isDigestDay = settings.telegramEnabled
     && now.dayOfWeek === settings.weeklyDigestDay
     && now.hour >= 8
     && state.lastWeeklyDate !== now.dateKey
+    && plan.lines.length >= (settings.minLinesForDigest ?? 1)
 
-  // Anything that crossed into "out" since we last looked.
-  const outNow = items.filter(i => stockStatus(i, settings) === 'out')
+  // Anything that crossed into "out" since we last looked — plus anything
+  // flagged 'urgent', which should not have to wait for the weekly digest.
+  const outNow = items.filter(i => {
+    if (i.notify === 'never') return false
+    const st = stockStatus(i, settings)
+    return st === 'out' || (i.notify === 'urgent' && (st === 'low' || st === 'expired'))
+  })
   const alreadyTold = state.notifiedOut ?? {}
   const newlyOut = outNow.filter(i => !alreadyTold[i.id])
   const isUrgent = settings.telegramEnabled
+    && (settings.alertOnOut ?? true)
     && newlyOut.length > 0
     && now.hour >= 8 && now.hour <= 21
     && state.lastUrgentDate !== now.dateKey
 
   const sent: string[] = []
 
-  if (isDigestDay || manualRequest) {
+  if (manualItem) {
+    const item = items.find(i => i.id === manualItem)
+    if (item) {
+      const loc = item.locationId ? locMap.get(item.locationId)?.name : null
+      const st = stockStatus(item, settings)
+      const pick = plan.lines.find(l => l.itemId === item.id)
+      await fanout([
+        `📋 <b>${esc(item.name)}</b>`,
+        loc ? `<i>${esc(loc)}</i>` : '',
+        '',
+        `Have: <b>${item.qty} ${esc(item.unit)}</b>${st !== 'ok' ? `  (${st})` : ''}`,
+        `Min ${item.minQty} · par ${item.parLevel}`,
+        pick ? `Buy ${pick.qty} ${esc(pick.unit)} from ${esc(String(pick.store))}` : '',
+        (item.priceRefs ?? []).length
+          ? (item.priceRefs ?? []).map(r => `${esc(String(r.store))} ${r.currency === 'MYR' ? 'RM' : 'S$'}${r.price.toFixed(2)}`).join(' · ')
+          : '',
+        '',
+        `<a href="${esc(shopeeSearch(item))}">Find on Shopee</a>`,
+      ].filter(Boolean).join('\n'))
+      sent.push('item')
+    }
+  } else if (isDigestDay || manualRequest) {
     const header = [
       `🏠 <b>${esc(settings.householdName || 'Home')} — weekly list</b>`,
       `<i>${now.label}</i>`,
@@ -214,12 +281,13 @@ async function main() {
       !plan.jbWorthIt && plan.jbFolded.length
         ? `\n<i>JB skipped — basket under S$${settings.jbMinBasketSgd}, folded into the SG list.</i>`
         : '',
+      sale.live ? `\n🔥 <i>Shopee ${sale.label} sale is live today.</i>` : '',
       `\n<a href="${APP_URL}">Open CasaaHome</a>`,
     ].filter(Boolean).join('\n')
 
     await fanout(header)
     for (const trip of ['sg', 'jb', 'online'] as TripKey[]) {
-      const msg = tripMessage(trip, plan, items)
+      const msg = tripMessage(trip, plan, items, sale, settings)
       if (msg) await fanout(msg)
     }
     const use = useSoonMessage(useSoon)
