@@ -37,7 +37,11 @@ Deploy the mirror: push to `main`. Deploy the primary: `npm run deploy:hosting`.
 - GitHub Pages deploying from Actions on every push to `main`
 - Repo secrets `TELEGRAM_BOT_TOKEN` and `FIREBASE_SERVICE_ACCOUNT` set, and the
   notifier verified end to end with a dry run
-- Household name set to **Casaa**
+- Household name set to **Casaa**, members: Caspar (two addresses) and Sarah
+- Blaze enabled; Cloud Storage bucket provisioned in `asia-southeast1` and rules
+  deployed, verified with `node scripts/rules.test.mjs`
+- The 1:100 floor plan from the Monocot drawing set is loaded as a scale-calibrated
+  tracing backdrop (see below)
 
 ## Setup — what still needs you
 
@@ -49,25 +53,14 @@ Firebase mints the OAuth client for you, but only from the console.
 2. **Get started** → **Google** → **Enable** → pick a support email → **Save**
 3. **Settings → Authorised domains** → **Add domain** → `xynkro.github.io`
 
-### 2. Upgrade to Blaze — required for photos only
-
-Cloud Storage on projects created after Oct 2024 needs a billing account attached.
-At this scale it stays inside the free allowances; set a budget alert if you want a
-hard ceiling. Everything except photo and floorplan upload works without this.
-
-1. <https://console.firebase.google.com/project/casaahome/usage/details> → **Upgrade**
-2. <https://console.firebase.google.com/project/casaahome/storage> → **Get started**
-   → **asia-southeast1**, same region as Firestore
-3. `npm run rules:deploy` to push the Storage rules
-
-### 3. Point the bot at you
+### 2. Point the bot at you
 
 Open [@LVHome1646Bot](https://t.me/LVHome1646Bot) and send it anything — a bot cannot
 message you first. Then read your numeric chat ID from
 `https://api.telegram.org/bot<TOKEN>/getUpdates` and paste it into
 **Settings → Telegram → Chat ID** in the app.
 
-### 4. Add Sarah
+### 3. Add Sarah
 
 **Settings → Who can get in** → her Google address. Then add the same address to the
 list in `storage.rules` and run `npm run rules:deploy`, or her photo uploads will be
@@ -114,6 +107,20 @@ dry run ✓**, or locally:
 ```bash
 FIREBASE_SERVICE_ACCOUNT="$(cat serviceAccount.json)" npm run notify:dry
 ```
+
+## The floorplan backdrop
+
+`house/plan` carries the proposed floor plan from the architect's PDF as an inline
+data URL, rendered at 8.819 mm per pixel. That figure is not estimated: the drawing's
+own dimension chain measures 1501 / 1770 / 3289 mm against a printed 1500 / 1770 /
+3288, so the 1:100 ratio is confirmed to better than 0.1%. Anything traced on this
+backdrop is dimensionally correct.
+
+Walls are **not** auto-extracted. It was tried: isolating the heaviest line weight
+picks up only the new partitions, and widening the filter starts pulling in the
+dining table, the bed and the dimension lines. Walls and furniture share line weights
+in this set and the PDF carries no layer data, so extraction is not reliable and the
+result would look right while being wrong. Trace it in the editor instead.
 
 ## The 3D view
 
