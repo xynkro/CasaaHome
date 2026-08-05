@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview",
+    "preview": "tsx scripts/preview.ts",
     "notify": "tsx scripts/notify.ts",
     "notify:dry": "DRY_RUN=true tsx scripts/notify.ts",
     "typecheck": "tsc -b --noEmit",

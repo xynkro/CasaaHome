@@ -134,7 +134,16 @@ export function buildShoppingPlan(
   const jbWorthIt = jbTotal >= s.jbMinBasketSgd || byTrip.jb.length >= 12
   let jbFolded: ShoppingLine[] = []
   if (!jbWorthIt && byTrip.jb.length) {
-    jbFolded = byTrip.jb.map(l => ({ ...l, trip: 'sg' as TripKey, store: 'ntuc' as StoreKey, savingNote: null }))
+    // Folded lines are now bought in Singapore, so the JB price is no longer
+    // on offer. Drop the comparison rather than advertising a saving that is
+    // not available on this trip.
+    jbFolded = byTrip.jb.map(l => ({
+      ...l, trip: 'sg' as TripKey, store: 'ntuc' as StoreKey,
+      savingNote: null, alternatives: [], saving: null,
+      estSgd: (l.alternatives ?? []).find(a => a.store === 'ntuc')?.sgd
+        ? (l.alternatives ?? []).find(a => a.store === 'ntuc')!.sgd * l.qty
+        : l.estSgd,
+    }))
     byTrip.sg = byTrip.sg.concat(jbFolded)
     byTrip.jb = []
   }
