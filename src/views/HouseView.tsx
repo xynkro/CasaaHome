@@ -9,6 +9,7 @@ import type { HousePlan, LocationKind, Room, StorageLocation, StockStatus, Wall 
 import { STATUS_META, STATUS_ORDER, stockStatus } from '../lib/stock'
 import { Empty } from '../ui/primitives'
 import { ItemRow } from '../ui/ItemRow'
+import AddItem from './AddItem'
 
 /**
  * The doll's-house view, in the style of a property portal's 3D floorplan:
@@ -34,6 +35,7 @@ export default function HouseView({ onOpenItem }: { onOpenItem: (id: string) => 
   const [mode, setMode] = useState<'doll' | 'walk'>('doll')
   const [cutaway, setCutaway] = useState(true)
   const [lost, setLost] = useState(false)
+  const [addTo, setAddTo] = useState<string | null>(null)
   const glRef = useRef<THREE.WebGLRenderer | null>(null)
   const canWalk = useMemo(() => !('ontouchstart' in window) && window.innerWidth > 720, [])
 
@@ -226,11 +228,15 @@ export default function HouseView({ onOpenItem }: { onOpenItem: (id: string) => 
                 {selectedLoc.longTerm && ' · long-term storage'}
               </div>
             </div>
+            <button className="btn btn-primary px-2 py-1 text-xs" onClick={() => setAddTo(selectedLoc.id)}>+ Add</button>
             <button className="btn btn-ghost px-2 py-1 text-xs" onClick={() => setSelected(null)}>Close</button>
           </header>
           <div className="scroll-thin max-h-[38dvh] overflow-y-auto">
             {selectedItems.length === 0 ? (
-              <div className="px-4 py-6 text-center text-xs text-ink-500">Nothing catalogued here yet.</div>
+              <button
+                onClick={() => setAddTo(selectedLoc.id)}
+                className="w-full px-4 py-6 text-center text-xs text-brass-400"
+              >Nothing in here yet — add the first thing</button>
             ) : (
               selectedItems.map(i => (
                 <ItemRow key={i.id} item={i} settings={settings} locMap={locMap} plan={plan} onOpen={onOpenItem} dense />
@@ -239,6 +245,13 @@ export default function HouseView({ onOpenItem }: { onOpenItem: (id: string) => 
           </div>
         </div>
       )}
+
+      <AddItem
+        open={!!addTo}
+        presetLocationId={addTo}
+        onClose={() => setAddTo(null)}
+        onOpenItem={onOpenItem}
+      />
     </div>
   )
 }

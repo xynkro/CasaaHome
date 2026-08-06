@@ -49,6 +49,34 @@ export const LOCATION_KINDS: LocationKind[] = [
  * distinguishable — in the list, in search, and in the 3D view, where the
  * massing is actually mounted at this height.
  */
+/**
+ * Surface finishes.
+ *
+ * Rendered from procedurally generated textures rather than image files: a
+ * home inventory should not ship megabytes of wood grain, and a canvas-drawn
+ * plank or tile grid survives being opened offline on a phone.
+ */
+export type Finish =
+  | 'plain' | 'oak' | 'walnut' | 'tile-light' | 'tile-dark'
+  | 'concrete' | 'carpet' | 'marble' | 'vinyl'
+
+export const FINISHES: {
+  key: Finish; label: string; base: string; accent: string; roughness: number
+}[] = [
+  { key: 'plain',      label: 'Plain',        base: '#E7E9EA', accent: '#DADFE4', roughness: 0.95 },
+  { key: 'oak',        label: 'Oak',          base: '#D8B98C', accent: '#C09E70', roughness: 0.72 },
+  { key: 'walnut',     label: 'Walnut',       base: '#8A6144', accent: '#6F4C34', roughness: 0.68 },
+  { key: 'tile-light', label: 'Light tile',   base: '#E9ECEE', accent: '#C6CCD1', roughness: 0.35 },
+  { key: 'tile-dark',  label: 'Dark tile',    base: '#4E555C', accent: '#3A4046', roughness: 0.38 },
+  { key: 'concrete',   label: 'Concrete',     base: '#C9CCCE', accent: '#B2B6B9', roughness: 0.9 },
+  { key: 'carpet',     label: 'Carpet',       base: '#B7A99A', accent: '#A2947F', roughness: 1.0 },
+  { key: 'marble',     label: 'Marble',       base: '#F0EFEC', accent: '#C9C6BF', roughness: 0.28 },
+  { key: 'vinyl',      label: 'Vinyl plank',  base: '#C4A98F', accent: '#A98D72', roughness: 0.6 },
+]
+
+export const finishOf = (f?: Finish | null) =>
+  FINISHES.find(x => x.key === f) ?? FINISHES[0]
+
 export type Level = 'floor' | 'low' | 'counter' | 'eye' | 'high'
 
 export const LEVELS: { key: Level; label: string; hint: string; metres: number }[] = [
@@ -75,6 +103,11 @@ export interface StorageLocation {
   pos?: { x: number; y: number; z: number } | null
   /** Upper or lower? Drives the mount height in 3D and reads in the list. */
   level?: Level | null
+  /** Real dimensions in metres, overriding the default massing for its kind. */
+  size?: { w: number; h: number; d: number } | null
+  /** Rotation about the vertical axis in degrees. 0 faces +z (south). */
+  rotation?: number | null
+  finish?: Finish | null
   photoUrls: string[]
   /**
    * The two shots that make a place findable: `closed` so you can recognise
@@ -173,6 +206,14 @@ export interface Room {
   /** Closed polygon in plan metres. */
   polygon: Pt[]
   color?: string
+  /** Floor finish. Falls back to a per-room tint when unset. */
+  finish?: Finish | null
+  /**
+   * A captured photographic walkthrough for this room — Matterport, Polycam,
+   * Kuula or similar. No amount of code turns a floorplan into one of these;
+   * they come off a scan, so the app links out rather than pretending.
+   */
+  tourUrl?: string | null
 }
 
 export interface HousePlan {
@@ -195,6 +236,10 @@ export interface HousePlan {
   wallHeight: number
   walls: Wall[]
   rooms: Room[]
+  /** Finish applied to every wall face. */
+  wallFinish?: Finish | null
+  /** Whole-home walkthrough, if one has been captured. */
+  tourUrl?: string | null
   updatedAt: string
 }
 

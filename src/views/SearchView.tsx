@@ -1,10 +1,11 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import Fuse from 'fuse.js'
 import { useStore, locationPath } from '../store'
-import { DEFAULT_CATEGORIES, type Item, type StockStatus } from '../types'
+import type { StockStatus } from '../types'
 import { STATUS_ORDER, stockStatus } from '../lib/stock'
-import { Empty, Field, Sheet } from '../ui/primitives'
+import { Empty } from '../ui/primitives'
 import { ItemRow } from '../ui/ItemRow'
+import AddItem from './AddItem'
 
 type Filter = 'all' | 'attention' | 'perishable' | 'seasonal' | 'unfiled'
 
@@ -13,7 +14,6 @@ export default function SearchView({ onOpenItem }: { onOpenItem: (id: string) =>
   const locations = useStore(s => s.locations)
   const plan = useStore(s => s.plan)
   const settings = useStore(s => s.settings)
-  const saveItem = useStore(s => s.saveItem)
 
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
@@ -158,94 +158,7 @@ export default function SearchView({ onOpenItem }: { onOpenItem: (id: string) =>
         </div>
       )}
 
-      <AddItem
-        open={adding}
-        onClose={() => setAdding(false)}
-        onCreate={async patch => {
-          const id = await saveItem(patch)
-          setAdding(false)
-          onOpenItem(id)
-        }}
-      />
+      <AddItem open={adding} onClose={() => setAdding(false)} onOpenItem={onOpenItem} />
     </div>
-  )
-}
-
-function AddItem({ open, onClose, onCreate }: {
-  open: boolean; onClose: () => void; onCreate: (p: Partial<Item>) => Promise<void>
-}) {
-  const locations = useStore(s => s.locations)
-  const plan = useStore(s => s.plan)
-  const locMap = useMemo(() => new Map(locations.map(l => [l.id, l])), [locations])
-
-  const [name, setName] = useState('')
-  const [qty, setQty] = useState(1)
-  const [locationId, setLocationId] = useState<string>('')
-  const [category, setCategory] = useState('Pantry')
-  const [busy, setBusy] = useState(false)
-
-  useEffect(() => { if (open) { setName(''); setQty(1) } }, [open])
-
-  const submit = async () => {
-    if (!name.trim()) return
-    setBusy(true)
-    try {
-      await onCreate({
-        name: name.trim(),
-        qty,
-        locationId: locationId || null,
-        category,
-        parLevel: Math.max(qty, 1),
-        minQty: 1,
-      })
-    } finally { setBusy(false) }
-  }
-
-  return (
-    <Sheet
-      open={open}
-      onClose={onClose}
-      title="Add an item"
-      footer={
-        <button className="btn btn-primary w-full" disabled={busy || !name.trim()} onClick={submit}>
-          Add and open
-        </button>
-      }
-    >
-      <div className="space-y-3">
-        <Field label="What is it">
-          <input
-            type="text"
-            autoFocus
-            placeholder="Jasmine rice 5kg"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void submit() } }}
-          />
-        </Field>
-        <div className="grid grid-cols-2 gap-2">
-          <Field label="How many">
-            <input type="number" inputMode="decimal" value={qty} onChange={e => setQty(Number(e.target.value))} />
-          </Field>
-          <Field label="Category">
-            <select value={category} onChange={e => setCategory(e.target.value)}>
-              {DEFAULT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </Field>
-        </div>
-        <Field label="Where">
-          <select value={locationId} onChange={e => setLocationId(e.target.value)}>
-            <option value="">Unfiled — sort it later</option>
-            {locations.map(l => (
-              <option key={l.id} value={l.id}>{locationPath(l.id, locMap, plan)}</option>
-            ))}
-          </select>
-        </Field>
-        <p className="text-[0.68rem] leading-relaxed text-ink-500">
-          Photos, expiry, prices and thresholds are all on the item page once it exists.
-          Get the name and the shelf down first.
-        </p>
-      </div>
-    </Sheet>
   )
 }

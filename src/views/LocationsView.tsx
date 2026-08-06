@@ -1,12 +1,13 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store'
-import { LOCATION_KINDS, LEVELS, levelLabel, type Level, type LocationKind, type StorageLocation } from '../types'
+import { LOCATION_KINDS, LEVELS, FINISHES, levelLabel, type Finish, type Level, type LocationKind, type StorageLocation } from '../types'
 import { stockStatus, STATUS_ORDER } from '../lib/stock'
 import { uploadPhoto, deletePhoto } from '../lib/images'
 import { Empty, Field, Sheet, StatusChip } from '../ui/primitives'
 import { ItemRow } from '../ui/ItemRow'
 import CaptureSweep, { pendingShots } from './CaptureSweep'
+import AddItem from './AddItem'
 import type { StockStatus } from '../types'
 
 const KIND_ICON: Record<LocationKind, string> = {
@@ -23,6 +24,7 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
   const [editing, setEditing] = useState<StorageLocation | 'new' | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [sweep, setSweep] = useState(false)
+  const [addTo, setAddTo] = useState<string | null>(null)
 
   const locMap = useMemo(() => new Map(locations.map(l => [l.id, l])), [locations])
 
@@ -135,8 +137,13 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
               <ItemRow key={i.id} item={i} settings={settings} locMap={locMap} plan={plan} onOpen={onOpenItem} dense />
             ))}
             {own.length === 0 && kids.length === 0 && (
-              <div className="px-4 py-3 text-center text-[0.7rem] text-ink-500">Empty</div>
+              <div className="px-4 py-3 text-center text-[0.7rem] text-ink-500">Nothing in here yet</div>
             )}
+            <button
+              onClick={() => setAddTo(loc.id)}
+              className="flex w-full items-center gap-2 border-b border-ink-700/60 px-3 py-2 text-left text-[0.72rem] font-medium text-brass-400 hover:bg-ink-800/60"
+              style={{ paddingLeft: `${1.85 + depth * 1.1}rem` }}
+            >+ Add something to {loc.name}</button>
             {kids.map(k => renderPlace(k, depth + 1))}
           </div>
         )}
@@ -216,6 +223,13 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
       />
 
       <CaptureSweep open={sweep} onClose={() => setSweep(false)} />
+
+      <AddItem
+        open={!!addTo}
+        presetLocationId={addTo}
+        onClose={() => setAddTo(null)}
+        onOpenItem={onOpenItem}
+      />
     </div>
   )
 }
@@ -302,6 +316,51 @@ function PlaceEditor({ target, onClose }: { target: StorageLocation | 'new' | nu
             {LEVELS.map(l => <option key={l.key} value={l.key}>{l.label} — {l.hint}</option>)}
           </select>
         </Field>
+
+        <details className="rounded-lg border border-ink-600 bg-ink-850 px-3 py-2">
+          <summary className="cursor-pointer text-[0.7rem] font-semibold uppercase tracking-wider text-ink-400">
+            How it looks in 3D
+          </summary>
+          <div className="mt-3 space-y-2.5">
+            <Field label="Finish">
+              <select value={v('finish') ?? ''} onChange={e => set('finish', (e.target.value || null) as Finish | null)}>
+                <option value="">Default for its kind</option>
+                {FINISHES.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
+              </select>
+            </Field>
+
+            <div className="grid grid-cols-3 gap-2">
+              {(['w', 'h', 'd'] as const).map(dim => (
+                <Field key={dim} label={{ w: 'Width', h: 'Height', d: 'Depth' }[dim]} hint="m">
+                  <input
+                    type="number" step="0.05" inputMode="decimal"
+                    placeholder="auto"
+                    value={v('size')?.[dim] ?? ''}
+                    onChange={e => {
+                      const cur = v('size') ?? { w: 0.9, h: 1.15, d: 0.45 }
+                      const n = Number(e.target.value)
+                      set('size', e.target.value === '' && dim === 'w' ? null : { ...cur, [dim]: n })
+                    }}
+                  />
+                </Field>
+              ))}
+            </div>
+
+            <Field label="Facing" hint={`${Math.round(v('rotation') ?? 0)}°`}>
+              <input
+                type="range" min={0} max={355} step={5}
+                value={v('rotation') ?? 0}
+                onChange={e => set('rotation', Number(e.target.value))}
+                className="!p-0"
+              />
+            </Field>
+            <p className="text-[0.68rem] leading-relaxed text-ink-500">
+              Leave the sizes blank and it uses a sensible default for the kind. Dropping the
+              marker on the floorplan turns it to face the nearest wall automatically, so you
+              only need this slider for something standing in the middle of a room.
+            </p>
+          </div>
+        </details>
 
         <Field label="Inside" hint="nest under another place">
           <select value={v('parentId') ?? ''} onChange={e => set('parentId', e.target.value || null)}>
