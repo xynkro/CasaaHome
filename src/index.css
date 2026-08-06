@@ -7,8 +7,13 @@
   --color-ink-800: #14181C;
   --color-ink-700: #1C2126;
   --color-ink-600: #2A3138;
-  --color-ink-500: #3D464F;
-  --color-ink-400: #6B767F;
+  /* ink-500 and ink-400 carry most of the small print in this app. At their
+     original values they measured 1.9:1 and 4.1:1 on the page background —
+     under the 4.5:1 floor, at ten pixels, read while standing in front of a
+     cupboard. Lifted to 4.8:1 and 5.5:1; the hierarchy between the four greys
+     survives because the steps stayed proportional. */
+  --color-ink-500: #74808B;
+  --color-ink-400: #808C96;
   --color-ink-300: #9AA5AE;
   --color-ink-200: #C6CED4;
 
@@ -17,14 +22,43 @@
   --color-brass-500: #D18F2C;
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Two sizes below `text-sm`, not eight. The app had accumulated 0.6, 0.62,
+     0.65, 0.66, 0.68, 0.7 and 0.72rem — nobody can tell 10.4px from 10.88px,
+     so the variety bought nothing and cost a coherent scale. 12px is the
+     floor; nothing in the UI goes smaller. */
+  --text-micro: 0.75rem;      /* 12px — labels, meta, chips */
+  --text-mini: 0.8125rem;     /* 13px — secondary body */
 }
 
 :root {
   color-scheme: dark;
+  --safe-t: env(safe-area-inset-top, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+}
+
+/*
+ * viewport-fit=cover plus a black-translucent status bar means the page draws
+ * underneath the Dynamic Island and the home indicator. That is the look we
+ * want — the background runs edge to edge — but every screen has to be inset
+ * or the top of the app hides behind the island. Insetting #root does it once
+ * for every route; the bottom bar is position:fixed against the viewport and
+ * so pads itself.
+ */
+#root {
+  padding-top: var(--safe-t);
+  padding-left: var(--safe-l);
+  padding-right: var(--safe-r);
 }
 
 html, body, #root { height: 100%; }
+
+/* The bottom bar's height, referenced by every scroll view that has to clear
+   it and by the 3D canvas that has to stop above it. Three call sites that
+   must agree; they used to agree by hand and drifted 18px. */
+:root { --nav-h: 3.75rem; }   /* measured, not guessed: 60px */
 
 body {
   margin: 0;
@@ -47,14 +81,19 @@ body {
   border-radius: 1rem;
 }
 
-input, select, textarea, button { font: inherit; }
+input, select, textarea, button { font-family: inherit; }
 
 input[type="text"], input[type="number"], input[type="date"], input[type="url"],
 input[type="search"], select, textarea {
   background: var(--color-ink-850);
   border: 1px solid var(--color-ink-600);
   border-radius: 0.65rem;
-  padding: 0.55rem 0.7rem;
+  /* 16px is not a style choice. Safari zooms the whole page when a field
+     smaller than that takes focus, and in an installed PWA there is no way to
+     zoom back out — you are left stranded at 1.3x for the rest of the session. */
+  font-size: 16px;
+  min-height: 44px;
+  padding: 0.6rem 0.75rem;
   color: var(--color-ink-200);
   width: 100%;
   outline: none;
@@ -102,8 +141,36 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 @keyframes sheet-up { from { transform: translateY(100%); } to { transform: none; } }
 .sheet-up { animation: sheet-up .24s cubic-bezier(.22,1,.36,1) both; }
 
+/*
+ * A 44x44 hit box without a 44px glyph. Icon-only controls — the ⋯ that is the
+ * only route to editing a place, the × that deletes a photo, the sheet's Close
+ * — were 8 to 26px. The drawn mark stays its size; only the target grows.
+ */
+.tap {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  display: inline-grid;
+  place-items: center;
+}
+
+/* Keyboard users had nothing at all: no focus ring anywhere in the app, and
+   Tailwind's preflight removes the tap highlight too. */
+:where(a, button, [role="button"], input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-brass-400);
+  outline-offset: 2px;
+  border-radius: 0.35rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .rise, .sheet-up { animation: none; }
+  /* The blanket rule matters more than the two named ones: pulsing loaders,
+     progress bars and every hover transition also count as motion. */
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* touch-action is not an inherited property, so setting it on the <svg> alone

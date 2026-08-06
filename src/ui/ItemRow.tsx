@@ -24,7 +24,10 @@ export function ItemRow({
       role="button"
       tabIndex={0}
       onClick={() => onOpen(item.id)}
-      onKeyDown={e => { if (e.key === 'Enter') onOpen(item.id) }}
+      onKeyDown={e => {
+        // Space scrolls the page by default, so a role=button has to claim it.
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(item.id) }
+      }}
       className="group flex w-full cursor-pointer items-center gap-3 border-b border-ink-700/60 px-3 py-2.5 text-left transition last:border-0 hover:bg-ink-800/60"
     >
       {thumb ? (
@@ -48,7 +51,7 @@ export function ItemRow({
           </span>
           {status !== 'ok' && <StatusChip status={status} small />}
         </div>
-        <div className="mt-0.5 flex items-center gap-1.5 truncate text-[0.7rem] text-ink-400">
+        <div className="mt-0.5 flex items-center gap-1.5 truncate text-mini text-ink-400">
           <span className="truncate">{where}</span>
           {cover && <><span className="text-ink-600">·</span><span className="shrink-0">{cover}</span></>}
         </div>
@@ -58,7 +61,7 @@ export function ItemRow({
         <div className="tnum shrink-0 text-right">
           <div className="text-sm font-semibold text-ink-200">{fmtQty(item.qty, item.unit)}</div>
           {item.parLevel > 0 && (
-            <div className="text-[0.65rem] text-ink-500">par {item.parLevel}</div>
+            <div className="text-micro text-ink-500">par {item.parLevel}</div>
           )}
         </div>
       )}
@@ -83,7 +86,7 @@ export function SectionCard({
           <span className={`size-1.5 rounded-full ${dot}`} />
           <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-300">{title}</h2>
           {count !== undefined && (
-            <span className="tnum rounded-full bg-ink-700 px-1.5 text-[0.65rem] font-semibold text-ink-300">{count}</span>
+            <span className="tnum rounded-full bg-ink-700 px-1.5 text-micro font-semibold text-ink-300">{count}</span>
           )}
         </div>
         {action}

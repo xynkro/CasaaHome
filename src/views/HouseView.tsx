@@ -89,7 +89,7 @@ export default function HouseView({ onOpenItem }: { onOpenItem: (id: string) => 
   }
 
   return (
-    <div className="relative" style={{ height: 'calc(100dvh - 4.5rem - var(--safe-b))' }}>
+    <div className="relative" style={{ height: 'calc(100dvh - var(--nav-h) - var(--safe-b) - var(--safe-t))' }}>
       <Canvas
         dpr={[1, 2]}
         gl={{ antialias: true, powerPreference: 'high-performance' }}
@@ -180,8 +180,8 @@ export default function HouseView({ onOpenItem }: { onOpenItem: (id: string) => 
       {/* --- overlay chrome ------------------------------------------------ */}
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
         <div className="pointer-events-auto rounded-xl border border-black/10 bg-white/85 px-3 py-2 shadow-sm backdrop-blur">
-          <div className="text-[0.62rem] font-semibold uppercase tracking-wider text-amber-700">House</div>
-          <div className="text-[0.68rem] text-slate-500">
+          <div className="text-micro font-semibold uppercase tracking-wider text-amber-700">House</div>
+          <div className="text-mini text-slate-500">
             {placed.length} marked {placed.length === 1 ? 'place' : 'places'}
           </div>
         </div>
@@ -213,7 +213,7 @@ export default function HouseView({ onOpenItem }: { onOpenItem: (id: string) => 
       )}
 
       {mode === 'walk' && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-4 text-center text-[0.68rem] text-slate-500">
+        <div className="pointer-events-none absolute inset-x-0 bottom-4 text-center text-mini text-slate-500">
           Click to look · W A S D to move · Shift to sprint · Esc to release
         </div>
       )}
@@ -223,7 +223,7 @@ export default function HouseView({ onOpenItem }: { onOpenItem: (id: string) => 
           <header className="flex items-center gap-2 border-b border-ink-700 px-3 py-2.5">
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-semibold text-ink-200">{selectedLoc.name}</div>
-              <div className="text-[0.68rem] text-ink-500">
+              <div className="text-mini text-ink-500">
                 {selectedItems.length} {selectedItems.length === 1 ? 'item' : 'items'}
                 {selectedLoc.longTerm && ' · long-term storage'}
               </div>

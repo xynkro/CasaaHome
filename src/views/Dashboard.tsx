@@ -87,7 +87,7 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
             <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-brass-400/12 text-brass-400">✓</div>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium text-ink-200">Run a verify sweep</div>
-              <div className="truncate text-[0.7rem] text-ink-400">
+              <div className="truncate text-mini text-ink-400">
                 {stale.length} {stale.length === 1 ? 'count has' : 'counts have'} not been eyeballed in {settings.staleVerifyDays}+ days
               </div>
             </div>
@@ -100,7 +100,7 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
             title="Needs attention"
             count={attention.length}
             tone={byStatus.out.length ? 'bad' : 'warn'}
-            action={<Link to="/shop" className="text-[0.7rem] font-semibold text-brass-400 hover:text-brass-300">Shopping list →</Link>}
+            action={<Link to="/shop" className="text-mini font-semibold text-brass-400 hover:text-brass-300">Shopping list →</Link>}
           >
             <div>
               {attention.slice(0, 12).map(i => (
@@ -108,7 +108,7 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
               ))}
             </div>
             {attention.length > 12 && (
-              <div className="border-t border-ink-700 px-3 py-2 text-center text-[0.7rem] text-ink-400">
+              <div className="border-t border-ink-700 px-3 py-2 text-center text-mini text-ink-400">
                 +{attention.length - 12} more
               </div>
             )}
@@ -132,7 +132,7 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
                   locMap={locMap}
                   plan={plan}
                   onOpen={onOpenItem}
-                  right={<span className="shrink-0 text-[0.7rem] text-ink-400">{e.detail}</span>}
+                  right={<span className="shrink-0 text-mini text-ink-400">{e.detail}</span>}
                 />
               ))}
             </div>
@@ -163,7 +163,7 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
         )}
 
         <div className="flex justify-center pt-2">
-          <Link to="/settings" className="text-[0.7rem] text-ink-500 hover:text-ink-300">Settings & Telegram</Link>
+          <Link to="/settings" className="text-mini text-ink-500 hover:text-ink-300">Settings & Telegram</Link>
         </div>
       </div>
 
@@ -175,7 +175,7 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
 function Header({ greeting, name, house }: { greeting: string; name: string; house: string }) {
   return (
     <header className="rise">
-      <div className="text-[0.7rem] font-medium uppercase tracking-[0.14em] text-brass-400">{house || 'Home'}</div>
+      <div className="text-mini font-medium uppercase tracking-[0.14em] text-brass-400">{house || 'Home'}</div>
       <h1 className="mt-0.5 text-2xl font-semibold tracking-tight text-ink-200">
         {greeting}{name ? `, ${name}` : ''}
       </h1>

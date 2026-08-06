@@ -15,12 +15,38 @@ import { Empty } from './ui/primitives'
 const HouseView = lazy(() => import('./views/HouseView'))
 const PlanEditor = lazy(() => import('./views/PlanEditor'))
 
+/**
+ * Drawn, not typed.
+ *
+ * The bar used to use text glyphs — ◈ ⌕ ⌂ ▤ 🛒 — and two of those are absent
+ * from the system face, so Home and Search fell through to a hairline fallback
+ * and looked ghosted beside their neighbours. The trolley was worse: a colour
+ * emoji, so it ignored the active tint entirely and sat on its own baseline.
+ * The row never read as one set. These share a 24 grid, one stroke weight, and
+ * inherit currentColor like everything else.
+ */
+const Icon = ({ d, filled }: { d: string; filled?: boolean }) => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" className="size-7"
+    fill={filled ? 'currentColor' : 'none'} stroke="currentColor"
+    strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+    <path d={d} />
+  </svg>
+)
+
+const PATHS = {
+  home:   'M3 10.4 12 3.5l9 6.9M5.4 9.2V19a1.4 1.4 0 0 0 1.4 1.4h10.4A1.4 1.4 0 0 0 18.6 19V9.2',
+  search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14ZM16.2 16.2 21 21',
+  house:  'M3.5 20.5h17M5 20.5V9.8l7-5.3 7 5.3v10.7M9.5 20.5v-5h5v5',
+  places: 'M4 4.5h16v5H4zM4 14.5h16v5H4zM8 7h.01M8 17h.01',
+  shop:   'M3 5h2.2l2.1 10.3a1.5 1.5 0 0 0 1.5 1.2h8.4a1.5 1.5 0 0 0 1.5-1.2L20.5 8H6.2M9.5 20.2h.01M17 20.2h.01',
+}
+
 const TABS = [
-  { to: '/', label: 'Home', icon: '◈' },
-  { to: '/search', label: 'Search', icon: '⌕' },
-  { to: '/house', label: 'House', icon: '⌂' },
-  { to: '/places', label: 'Places', icon: '▤' },
-  { to: '/shop', label: 'Shop', icon: '🛒' },
+  { to: '/', label: 'Home', d: PATHS.home },
+  { to: '/search', label: 'Search', d: PATHS.search },
+  { to: '/house', label: 'House', d: PATHS.house },
+  { to: '/places', label: 'Places', d: PATHS.places },
+  { to: '/shop', label: 'Shop', d: PATHS.shop },
 ]
 
 export default function App() {
@@ -80,7 +106,7 @@ export default function App() {
               than inside another app.
             </p>
           )}
-          <p className="mt-6 text-[0.65rem] text-ink-500">© {year} · household use only</p>
+          <p className="mt-6 text-micro text-ink-500">© {year} · household use only</p>
         </div>
       </div>
     )
@@ -105,7 +131,7 @@ export default function App() {
     <div className="flex h-full flex-col">
       <main
         className="scroll-thin min-h-0 flex-1 overflow-y-auto"
-        style={{ paddingBottom: 'calc(4.5rem + var(--safe-b))' }}
+        style={{ paddingBottom: 'calc(var(--nav-h) + var(--safe-b) + 0.5rem)' }}
       >
         <Routes>
           <Route path="/" element={<Dashboard onOpenItem={setOpenItem} />} />
@@ -144,13 +170,17 @@ export default function App() {
               to={t.to}
               end={t.to === '/'}
               className={({ isActive }) =>
-                `flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[0.62rem] font-medium transition ${
+                `flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-micro font-medium transition ${
                   isActive ? 'text-brass-400' : 'text-ink-400 hover:text-ink-300'
                 }`
               }
             >
-              <span className="text-base leading-none">{t.icon}</span>
-              {t.label}
+              {({ isActive }) => (
+                <>
+                  <Icon d={t.d} filled={false} />
+                  <span className={isActive ? 'font-semibold' : undefined}>{t.label}</span>
+                </>
+              )}
             </NavLink>
           ))}
         </div>

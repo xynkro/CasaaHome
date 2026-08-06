@@ -92,13 +92,13 @@ export default function ItemSheet({ itemId, onClose }: { itemId: string | null; 
       {/* --- the count, front and centre ---------------------------------- */}
       <div className="panel px-3 py-3">
         <div className="mb-2 flex items-baseline justify-between">
-          <span className="text-[0.7rem] font-semibold uppercase tracking-wider text-ink-400">
+          <span className="text-mini font-semibold uppercase tracking-wider text-ink-400">
             How many are actually there?
           </span>
-          {cover && <span className="text-[0.7rem] text-ink-400">{cover}</span>}
+          {cover && <span className="text-mini text-ink-400">{cover}</span>}
         </div>
         <QtyStepper value={draftQty} onChange={setDraftQty} unit={item.unit} />
-        <div className="mt-2 flex items-center justify-between text-[0.68rem] text-ink-500">
+        <div className="mt-2 flex items-center justify-between text-mini text-ink-500">
           <span>
             App thinks <span className="tnum text-ink-300">{item.qty}</span> · min {item.minQty} · par {item.parLevel}
           </span>
@@ -163,7 +163,7 @@ export default function ItemSheet({ itemId, onClose }: { itemId: string | null; 
 
       {history.length > 0 && (
         <details className="mt-4">
-          <summary className="cursor-pointer text-[0.7rem] font-semibold uppercase tracking-wider text-ink-400">
+          <summary className="cursor-pointer text-mini font-semibold uppercase tracking-wider text-ink-400">
             History ({history.length})
           </summary>
           <ul className="mt-2 divide-y divide-ink-700/60 text-xs">
@@ -212,7 +212,7 @@ export default function ItemSheet({ itemId, onClose }: { itemId: string | null; 
 function Fact({ label, value, tone }: { label: string; value: string; tone?: 'warn' }) {
   return (
     <div className="panel px-2.5 py-2">
-      <dt className="text-[0.62rem] font-semibold uppercase tracking-wider text-ink-500">{label}</dt>
+      <dt className="text-micro font-semibold uppercase tracking-wider text-ink-500">{label}</dt>
       <dd className={`mt-0.5 truncate text-xs ${tone === 'warn' ? 'text-amber-300' : 'text-ink-200'}`}>{value}</dd>
     </div>
   )
@@ -248,9 +248,9 @@ function Photos({ item, onSave }: { item: Item; onSave: (p: Partial<Item> & { id
             <img src={url} alt="" className="size-24 rounded-xl object-cover" />
             <button
               onClick={() => remove(url)}
-              className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-black/70 text-[0.6rem] text-ink-200"
+              className="absolute right-0 top-0 grid size-9 place-items-center rounded-full text-sm text-ink-200"
               aria-label="Remove photo"
-            >×</button>
+            ><span className="grid size-6 place-items-center rounded-full bg-black/70">×</span></button>
           </div>
         ))}
         <button
@@ -441,7 +441,7 @@ function PriceEditor({ refs, myrPerSgd, onChange }: {
 
   return (
     <div>
-      <div className="mb-1 text-[0.7rem] font-semibold uppercase tracking-wider text-ink-400">
+      <div className="mb-1 text-mini font-semibold uppercase tracking-wider text-ink-400">
         Prices you have seen
       </div>
       {refs.length > 0 && (
@@ -453,11 +453,15 @@ function PriceEditor({ refs, myrPerSgd, onChange }: {
                 {r.currency === 'MYR' ? 'RM' : 'S$'}{r.price.toFixed(2)}
               </span>
               {r.currency === 'MYR' && (
-                <span className="tnum text-[0.65rem] text-ink-500">
+                <span className="tnum text-micro text-ink-500">
                   ≈S${(r.price / (myrPerSgd || 3.35)).toFixed(2)}
                 </span>
               )}
-              <button className="text-ink-500 hover:text-rose-300" onClick={() => onChange(refs.filter(x => x.store !== r.store))}>×</button>
+              <button
+                className="tap -my-2 text-ink-400 hover:text-rose-300"
+                aria-label={`Remove ${storeShort(r.store)} price`}
+                onClick={() => onChange(refs.filter(x => x.store !== r.store))}
+              >×</button>
             </li>
           ))}
         </ul>
@@ -477,7 +481,7 @@ function PriceEditor({ refs, myrPerSgd, onChange }: {
         />
         <button className="btn btn-ghost shrink-0 text-xs" onClick={add}>Add</button>
       </div>
-      <p className="mt-1 text-[0.65rem] leading-relaxed text-ink-500">
+      <p className="mt-1 text-micro leading-relaxed text-ink-500">
         No retailer here publishes a usable price API, so prices are whatever you record.
         Two or more and the shopping list routes you to the cheaper one automatically.
       </p>

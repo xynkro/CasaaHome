@@ -76,7 +76,7 @@ export default function SettingsView() {
             />
           </Field>
         </div>
-        <p className="mt-1 text-[0.68rem] leading-relaxed text-ink-500">
+        <p className="mt-1 text-mini leading-relaxed text-ink-500">
           Everyone on the household list sets their own. Google display names are usually too formal to greet someone with.
         </p>
       </Group>
@@ -90,7 +90,7 @@ export default function SettingsView() {
             <input type="number" value={v('expiryWarnDays')} onChange={e => set('expiryWarnDays', Number(e.target.value))} />
           </Field>
         </div>
-        <p className="mt-1 text-[0.68rem] leading-relaxed text-ink-500">
+        <p className="mt-1 text-mini leading-relaxed text-ink-500">
           An item counts as low when it drops to its own minimum, <em>or</em> when the measured usage rate says
           there is under this many days of it left. The second rule only kicks in once there is enough history
           to estimate a rate.
@@ -104,7 +104,7 @@ export default function SettingsView() {
         <Field label="Nag about forgotten storage after" hint="days">
           <input type="number" value={v('storageNudgeDays')} onChange={e => set('storageNudgeDays', Number(e.target.value))} />
         </Field>
-        <p className="mt-1 text-[0.68rem] leading-relaxed text-ink-500">
+        <p className="mt-1 text-mini leading-relaxed text-ink-500">
           Only places marked <span className="text-ink-300">long-term storage</span> are nagged, and anything
           ticked <span className="text-ink-300">seasonal</span> is skipped entirely — winter clothes should not
           generate reminders.
@@ -120,7 +120,7 @@ export default function SettingsView() {
             <input type="number" value={v('jbMinBasketSgd')} onChange={e => set('jbMinBasketSgd', Number(e.target.value))} />
           </Field>
         </div>
-        <p className="mt-1 text-[0.68rem] leading-relaxed text-ink-500">
+        <p className="mt-1 text-mini leading-relaxed text-ink-500">
           Below the minimum basket, JB items get folded back into the Singapore list rather than sending you
           across for three bottles of detergent.
         </p>
@@ -167,13 +167,13 @@ export default function SettingsView() {
             checked={v('alertOnOut')} onChange={e => set('alertOnOut', e.target.checked)} />
           Ping the same day something runs out
         </label>
-        <p className="mt-1 text-[0.68rem] leading-relaxed text-ink-500">
+        <p className="mt-1 text-mini leading-relaxed text-ink-500">
           Shopee runs its campaigns on the double dates — 1.1, 2.2 … 12.12, open the day either
           side. Anything merely low is held back for the next one; anything you have actually run
           out of is bought now regardless.
         </p>
-        {tgSaved && <p className="mt-1 text-[0.68rem] text-emerald-400">Saved.</p>}
-        <p className="mt-2 text-[0.68rem] leading-relaxed text-ink-500">
+        {tgSaved && <p className="mt-1 text-mini text-emerald-400">Saved.</p>}
+        <p className="mt-2 text-mini leading-relaxed text-ink-500">
           A group ID starts with a minus sign; a personal one does not. To add a group,
           invite the bot to it and send <code>/start@LVHome1646Bot</code> there — bots have
           privacy mode on by default and cannot see ordinary group chatter until addressed.
@@ -187,7 +187,8 @@ export default function SettingsView() {
               <span className="flex-1 truncate text-ink-300">{e}</span>
               {e !== user?.email && (
                 <button
-                  className="text-ink-500 hover:text-rose-300"
+                  className="tap -my-2 text-ink-400 hover:text-rose-300"
+                  aria-label={`Remove ${e}`}
                   onClick={() => setDoc(doc(db, 'config', 'access'), { emails: access.filter(x => x !== e) }, { merge: true })}
                 >×</button>
               )}
@@ -206,7 +207,7 @@ export default function SettingsView() {
           />
           <button className="btn btn-ghost shrink-0 text-xs" onClick={addEmail}>Add</button>
         </div>
-        <p className="mt-1 text-[0.68rem] text-ink-500">
+        <p className="mt-1 text-mini text-ink-500">
           Google accounts on this list can read and edit everything. Everyone else is refused by the database itself,
           not just the app.
         </p>
@@ -221,15 +222,19 @@ export default function SettingsView() {
           <button className="btn btn-ghost text-xs" onClick={exportJson}>Export JSON backup</button>
           <button className="btn btn-ghost text-xs" onClick={signOutNow}>Sign out ({user?.email})</button>
         </div>
-        <p className="mt-2 text-[0.68rem] text-ink-500">
+        <p className="mt-2 text-mini text-ink-500">
           {items.length} items · {locations.length} places
         </p>
       </Group>
 
       {dirty && (
         <div
-          className="sticky bottom-0 -mx-4 border-t border-ink-700 bg-ink-900/95 px-4 py-3 backdrop-blur"
-          style={{ marginBottom: 'calc(-1.25rem)' }}
+          className="sticky -mx-4 border-t border-ink-700 bg-ink-900/95 px-4 py-3 backdrop-blur"
+          // A sticky offset resolves against the scrollport, which is main's
+          // padding box — not its content box. bottom-0 therefore pinned this
+          // bar to the raw viewport bottom, entirely behind the opaque tab bar,
+          // so Save was only reachable at the very end of the scroll.
+          style={{ bottom: 'calc(var(--nav-h) + var(--safe-b))', marginBottom: '-1.25rem' }}
         >
           <div className="flex gap-2">
             <button className="btn btn-ghost flex-1" onClick={() => setD({})}>Discard</button>

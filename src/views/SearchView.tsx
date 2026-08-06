@@ -24,7 +24,12 @@ export default function SearchView({ onOpenItem }: { onOpenItem: (id: string) =>
 
   const locMap = useMemo(() => new Map(locations.map(l => [l.id, l])), [locations])
 
-  useEffect(() => { inputRef.current?.focus() }, [])
+  // Search is a tab, not a modal. Autofocusing here threw the keyboard up over
+  // the results and the nav on every single visit, even though the usual case
+  // is browsing the sorted list rather than typing.
+  useEffect(() => {
+    if (window.matchMedia('(pointer: fine)').matches) inputRef.current?.focus()
+  }, [])
 
   // Index includes the resolved location path, so "kitchen" finds everything
   // in the kitchen even though items only store a location id.
@@ -117,7 +122,7 @@ export default function SearchView({ onOpenItem }: { onOpenItem: (id: string) =>
           <select
             value={category}
             onChange={e => setCategory(e.target.value)}
-            className="!w-auto shrink-0 !py-0.5 !text-xs"
+            className="!w-auto shrink-0 !px-2"
           >
             <option value="">Any category</option>
             {categories.map(c => <option key={c} value={c}>{c}</option>)}
@@ -125,7 +130,7 @@ export default function SearchView({ onOpenItem }: { onOpenItem: (id: string) =>
         </div>
       </div>
 
-      <div className="mt-1 text-[0.68rem] text-ink-500">
+      <div className="mt-1 text-mini text-ink-500">
         {results.length} {results.length === 1 ? 'item' : 'items'}
       </div>
 
@@ -151,7 +156,7 @@ export default function SearchView({ onOpenItem }: { onOpenItem: (id: string) =>
             />
           ))}
           {results.length > 200 && (
-            <div className="border-t border-ink-700 px-3 py-2 text-center text-[0.7rem] text-ink-400">
+            <div className="border-t border-ink-700 px-3 py-2 text-center text-mini text-ink-400">
               Showing first 200 — narrow the search
             </div>
           )}

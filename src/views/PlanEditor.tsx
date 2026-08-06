@@ -415,7 +415,7 @@ export default function PlanEditor() {
     <div className="mx-auto max-w-4xl px-4 py-5">
       <div className="flex items-baseline justify-between">
         <h1 className="text-xl font-semibold tracking-tight text-ink-200">Floorplan</h1>
-        <Link to="/house" className="text-[0.7rem] font-semibold text-brass-400 hover:text-brass-300">See it in 3D →</Link>
+        <Link to="/house" className="text-mini font-semibold text-brass-400 hover:text-brass-300">See it in 3D →</Link>
       </div>
 
       {!ready ? (
@@ -468,14 +468,14 @@ export default function PlanEditor() {
                 >Delete room</button>
               </>
             )}
-            <span className="tnum ml-auto text-[0.68rem] text-ink-500">
+            <span className="tnum ml-auto text-mini text-ink-500">
               {walls.length} walls · {rooms.length} rooms
               {saveState === 'saving' && <span className="ml-2 text-brass-400">saving…</span>}
               {saveState === 'saved' && <span className="ml-2 text-emerald-400">saved ✓</span>}
             </span>
           </div>
 
-          <div className="mt-1 min-h-[1.1rem] text-[0.68rem] leading-relaxed text-ink-500">
+          <div className="mt-1 min-h-[1.1rem] text-mini leading-relaxed text-ink-500">
             {hint ?? HELP[tool]}
           </div>
 
@@ -617,7 +617,7 @@ export default function PlanEditor() {
                 </select>
               </Field>
               {!locations.length && (
-                <p className="mt-2 text-[0.68rem] text-ink-500">
+                <p className="mt-2 text-mini text-ink-500">
                   Add cupboards under <Link to="/places" className="text-brass-400">Places</Link> first.
                 </p>
               )}
@@ -683,7 +683,7 @@ export default function PlanEditor() {
         <Field label="Real-world distance" hint="metres">
           <input type="number" step="0.1" autoFocus value={scaleMetres} onChange={e => setScaleMetres(e.target.value)} />
         </Field>
-        <p className="mt-2 text-[0.68rem] leading-relaxed text-ink-500">
+        <p className="mt-2 text-mini leading-relaxed text-ink-500">
           Pick something you can trust — a printed dimension, or a door at 0.9 m.
           Everything else scales from this one number.
         </p>
@@ -709,7 +709,7 @@ export default function PlanEditor() {
           </div>
         }
       >
-        <p className="text-[0.68rem] leading-relaxed text-ink-500">
+        <p className="text-mini leading-relaxed text-ink-500">
           These are the spaces your walls enclose. Names carry over where a detected space
           matches one you had already. This replaces the whole room list.
         </p>
@@ -721,7 +721,7 @@ export default function PlanEditor() {
                 value={d.name}
                 onChange={e => setDetected(list => (list ?? []).map((x, k) => k === i ? { ...x, name: e.target.value } : x))}
               />
-              <span className="tnum w-20 shrink-0 text-right text-[0.7rem] text-ink-500">{d.area.toFixed(1)} m²</span>
+              <span className="tnum w-20 shrink-0 text-right text-mini text-ink-500">{d.area.toFixed(1)} m²</span>
             </li>
           ))}
         </ul>

@@ -150,7 +150,7 @@ export default function CaptureSweep({ open, onClose }: { open: boolean; onClose
       title={
         <div className="flex w-full items-center gap-2">
           <span>Photo sweep</span>
-          <span className="tnum text-[0.7rem] font-normal text-ink-500">{idx + 1} / {queue.length}</span>
+          <span className="tnum text-mini font-normal text-ink-500">{idx + 1} / {queue.length}</span>
         </div>
       }
       footer={
@@ -192,7 +192,7 @@ export default function CaptureSweep({ open, onClose }: { open: boolean; onClose
 
       {cur.kind === 'open' && cur.loc.shots?.closed && (
         <div className="mt-3">
-          <div className="mb-1 text-[0.68rem] font-semibold uppercase tracking-wider text-ink-500">
+          <div className="mb-1 text-mini font-semibold uppercase tracking-wider text-ink-500">
             You are at the right one if it looks like this
           </div>
           <img src={cur.loc.shots.closed} alt="" className="h-28 rounded-xl object-cover" />

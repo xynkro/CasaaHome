@@ -1,11 +1,11 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { StockStatus } from '../types'
 import { STATUS_META } from '../lib/stock'
 
 export function StatusChip({ status, small }: { status: StockStatus; small?: boolean }) {
   const m = STATUS_META[status]
   return (
-    <span className={`chip ${m.cls} ${small ? 'text-[0.6rem] px-1.5' : ''}`}>
+    <span className={`chip ${m.cls} ${small ? 'text-micro px-1.5' : ''}`}>
       <span className={`inline-block rounded-full ${m.dot} ${small ? 'size-1' : 'size-1.5'}`} />
       {m.label}
     </span>
@@ -16,8 +16,8 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
   return (
     <label className="block">
       <div className="mb-1 flex items-baseline justify-between gap-2">
-        <span className="text-[0.7rem] font-semibold uppercase tracking-wider text-ink-400">{label}</span>
-        {hint && <span className="text-[0.65rem] text-ink-500">{hint}</span>}
+        <span className="text-mini font-semibold uppercase tracking-wider text-ink-400">{label}</span>
+        {hint && <span className="text-micro text-ink-500">{hint}</span>}
       </div>
       {children}
     </label>
@@ -31,18 +31,45 @@ export function Sheet({
   children: ReactNode; footer?: ReactNode; wide?: boolean
 }) {
   const ref = useRef<HTMLDivElement>(null)
+  const [kb, setKb] = useState(0)
 
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', onKey)
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+
+    // Locking <body> did nothing: body is pinned to height:100% and never
+    // scrolls. The real scroller is <main>, so the list kept moving behind
+    // every open sheet.
+    const main = document.querySelector('main')
+    const prev = main?.style.overflow
+    if (main) main.style.overflow = 'hidden'
+
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prev
+      if (main) main.style.overflow = prev ?? ''
     }
   }, [open, onClose])
+
+  /**
+   * iOS shrinks only the visual viewport when the keyboard opens; the layout
+   * viewport, and therefore anything position:fixed, does not move. The sheet
+   * is bottom-anchored, so its footer — which holds Add and Save — sat under
+   * the keyboard on every sheet that autofocuses a field.
+   */
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!open || !vv) return
+    const sync = () => setKb(Math.max(0, window.innerHeight - vv.height - vv.offsetTop))
+    vv.addEventListener('resize', sync)
+    vv.addEventListener('scroll', sync)
+    sync()
+    return () => {
+      vv.removeEventListener('resize', sync)
+      vv.removeEventListener('scroll', sync)
+      setKb(0)
+    }
+  }, [open])
 
   if (!open) return null
 
@@ -51,18 +78,26 @@ export function Sheet({
       <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={onClose} />
       <div
         ref={ref}
-        className={`sheet-up relative flex max-h-[92dvh] w-full flex-col border border-ink-700 bg-ink-850 shadow-2xl
-          sm:max-h-[86dvh] sm:rounded-2xl rounded-t-2xl ${wide ? 'sm:max-w-3xl' : 'sm:max-w-lg'}`}
+        className={`sheet-up relative flex w-full flex-col border border-ink-700 bg-ink-850 shadow-2xl
+          sm:rounded-2xl rounded-t-2xl ${wide ? 'sm:max-w-3xl' : 'sm:max-w-lg'}`}
+        // A sheet is fixed to the viewport, so it is not covered by the #root
+        // inset and would otherwise slide its header under the island.
+        style={{ maxHeight: `calc(92dvh - var(--safe-t) - ${kb}px)`, marginBottom: kb }}
       >
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-ink-700 px-4 py-3">
           <div className="min-w-0 text-sm font-semibold text-ink-200">{title}</div>
-          <button className="btn btn-ghost px-2 py-1 text-xs" onClick={onClose}>Close</button>
+          <button className="tap btn btn-ghost px-2 py-1 text-xs" onClick={onClose}>Close</button>
         </div>
-        <div className="scroll-thin min-h-0 flex-1 overflow-y-auto px-4 py-4">{children}</div>
+        <div
+          className="scroll-thin min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4"
+          // Without a footer the body is the last child, so it owns the inset
+          // that keeps the final button clear of the home indicator.
+          style={footer ? undefined : { paddingBottom: 'calc(1rem + var(--safe-b))' }}
+        >{children}</div>
         {footer && (
           <div
             className="shrink-0 border-t border-ink-700 px-4 py-3"
-            style={{ paddingBottom: 'calc(0.75rem + var(--safe-b))' }}
+            style={{ paddingBottom: kb > 0 ? '0.75rem' : 'calc(0.75rem + var(--safe-b))' }}
           >
             {footer}
           </div>
@@ -101,7 +136,7 @@ export function Stat({ value, label, tone = 'default', onClick }: {
       className="panel flex flex-col items-start gap-0.5 px-3 py-2.5 text-left transition enabled:hover:border-ink-500 disabled:cursor-default"
     >
       <div className={`tnum text-xl font-semibold leading-none ${tones[tone]}`}>{value}</div>
-      <div className="text-[0.65rem] font-medium uppercase tracking-wider text-ink-400">{label}</div>
+      <div className="text-micro font-medium uppercase tracking-wider text-ink-400">{label}</div>
     </button>
   )
 }

@@ -127,14 +127,14 @@ export default function AddItem({
 
         {added.length > 0 && (
           <div className="rounded-lg bg-ink-850 px-3 py-2">
-            <div className="text-[0.68rem] font-semibold uppercase tracking-wider text-ink-500">
+            <div className="text-mini font-semibold uppercase tracking-wider text-ink-500">
               Added this session ({added.length})
             </div>
             <div className="mt-1 text-xs leading-relaxed text-ink-300">{added.join(' · ')}</div>
           </div>
         )}
 
-        <p className="text-[0.68rem] leading-relaxed text-ink-500">
+        <p className="text-mini leading-relaxed text-ink-500">
           Photos, expiry, prices and thresholds all live on the item page. Get the name
           and the shelf down first — the rest can wait.
         </p>

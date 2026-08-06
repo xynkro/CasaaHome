@@ -114,18 +114,18 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
             <span className="w-4 shrink-0 text-center text-ink-500">{KIND_ICON[loc.kind]}</span>
             <span className="truncate text-sm font-medium text-ink-200">{loc.name}</span>
             {loc.level && (
-              <span className="chip shrink-0 border-ink-600 bg-ink-800 text-[0.6rem] text-ink-400">
+              <span className="chip shrink-0 border-ink-600 bg-ink-800 text-micro text-ink-400">
                 {levelLabel(loc.level)}
               </span>
             )}
             {loc.longTerm && (
-              <span className="chip shrink-0 border-ink-600 bg-ink-800 text-[0.6rem] text-ink-400">long-term</span>
+              <span className="chip shrink-0 border-ink-600 bg-ink-800 text-micro text-ink-400">long-term</span>
             )}
             {worst !== 'ok' && <StatusChip status={worst} small />}
           </button>
-          <span className="tnum shrink-0 text-[0.7rem] text-ink-500">{total}</span>
+          <span className="tnum shrink-0 text-mini text-ink-500">{total}</span>
           <button
-            className="shrink-0 px-1 text-ink-500 hover:text-brass-400"
+            className="tap shrink-0 text-ink-400 hover:text-brass-400"
             onClick={() => setEditing(loc)}
             aria-label={`Edit ${loc.name}`}
           >⋯</button>
@@ -137,11 +137,11 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
               <ItemRow key={i.id} item={i} settings={settings} locMap={locMap} plan={plan} onOpen={onOpenItem} dense />
             ))}
             {own.length === 0 && kids.length === 0 && (
-              <div className="px-4 py-3 text-center text-[0.7rem] text-ink-500">Nothing in here yet</div>
+              <div className="px-4 py-3 text-center text-mini text-ink-500">Nothing in here yet</div>
             )}
             <button
               onClick={() => setAddTo(loc.id)}
-              className="flex w-full items-center gap-2 border-b border-ink-700/60 px-3 py-2 text-left text-[0.72rem] font-medium text-brass-400 hover:bg-ink-800/60"
+              className="flex w-full items-center gap-2 border-b border-ink-700/60 px-3 py-2 text-left text-mini font-medium text-brass-400 hover:bg-ink-800/60"
               style={{ paddingLeft: `${1.85 + depth * 1.1}rem` }}
             >+ Add something to {loc.name}</button>
             {kids.map(k => renderPlace(k, depth + 1))}
@@ -156,7 +156,7 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
       <div className="flex items-baseline justify-between">
         <h1 className="text-xl font-semibold tracking-tight text-ink-200">Places</h1>
         <div className="flex items-center gap-3">
-          <Link to="/plan" className="text-[0.7rem] font-semibold text-brass-400 hover:text-brass-300">Floorplan →</Link>
+          <Link to="/plan" className="text-mini font-semibold text-brass-400 hover:text-brass-300">Floorplan →</Link>
           <button className="btn btn-primary px-3 py-1.5 text-xs" onClick={() => setEditing('new')}>+ Place</button>
         </div>
       </div>
@@ -172,7 +172,7 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
           <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-brass-400/12 text-brass-400">📷</div>
           <div className="min-w-0 flex-1">
             <div className="text-sm font-medium text-ink-200">Run a photo sweep</div>
-            <div className="truncate text-[0.7rem] text-ink-400">
+            <div className="truncate text-mini text-ink-400">
               {missingShots} shot{missingShots === 1 ? '' : 's'} still wanted — the app tells you which place and how to frame it
             </div>
           </div>
@@ -207,7 +207,7 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
             <section className="panel overflow-hidden">
               <header className="flex items-center justify-between border-b border-ink-700 px-3 py-2">
                 <span className="text-xs font-semibold uppercase tracking-wider text-amber-300">Unfiled</span>
-                <span className="tnum text-[0.7rem] text-ink-500">{unfiled.length}</span>
+                <span className="tnum text-mini text-ink-500">{unfiled.length}</span>
               </header>
               {unfiled.map(i => (
                 <ItemRow key={i.id} item={i} settings={settings} locMap={locMap} plan={plan} onOpen={onOpenItem} dense />
@@ -318,7 +318,7 @@ function PlaceEditor({ target, onClose }: { target: StorageLocation | 'new' | nu
         </Field>
 
         <details className="rounded-lg border border-ink-600 bg-ink-850 px-3 py-2">
-          <summary className="cursor-pointer text-[0.7rem] font-semibold uppercase tracking-wider text-ink-400">
+          <summary className="cursor-pointer text-mini font-semibold uppercase tracking-wider text-ink-400">
             How it looks in 3D
           </summary>
           <div className="mt-3 space-y-2.5">
@@ -354,7 +354,7 @@ function PlaceEditor({ target, onClose }: { target: StorageLocation | 'new' | nu
                 className="!p-0"
               />
             </Field>
-            <p className="text-[0.68rem] leading-relaxed text-ink-500">
+            <p className="text-mini leading-relaxed text-ink-500">
               Leave the sizes blank and it uses a sensible default for the kind. Dropping the
               marker on the floorplan turns it to face the nearest wall automatically, so you
               only need this slider for something standing in the middle of a room.
@@ -391,7 +391,7 @@ function PlaceEditor({ target, onClose }: { target: StorageLocation | 'new' | nu
 
         {existing && (
           <div>
-            <div className="mb-1 text-[0.7rem] font-semibold uppercase tracking-wider text-ink-400">Photos</div>
+            <div className="mb-1 text-mini font-semibold uppercase tracking-wider text-ink-400">Photos</div>
             <div className="scroll-thin flex gap-2 overflow-x-auto pb-1">
               {(existing.photoUrls ?? []).map(url => (
                 <div key={url} className="relative shrink-0">
@@ -401,8 +401,9 @@ function PlaceEditor({ target, onClose }: { target: StorageLocation | 'new' | nu
                       await saveLocation({ id: existing.id, photoUrls: existing.photoUrls.filter(u => u !== url) })
                       void deletePhoto(url)
                     }}
-                    className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-black/70 text-[0.6rem]"
-                  >×</button>
+                    className="absolute right-0 top-0 grid size-9 place-items-center rounded-full text-sm text-white"
+                    aria-label="Remove photo"
+                  ><span className="grid size-6 place-items-center rounded-full bg-black/70">×</span></button>
                 </div>
               ))}
               <button

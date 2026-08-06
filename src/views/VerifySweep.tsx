@@ -92,7 +92,7 @@ export default function VerifySweep({
       title={
         <div className="flex w-full items-center gap-2">
           <span>Verify sweep</span>
-          <span className="tnum text-[0.7rem] font-normal text-ink-500">{idx + 1} / {queue.length}</span>
+          <span className="tnum text-mini font-normal text-ink-500">{idx + 1} / {queue.length}</span>
         </div>
       }
       footer={
@@ -136,7 +136,7 @@ export default function VerifySweep({
             {current.brand && <span className="text-ink-400">{current.brand} </span>}{current.name}
           </div>
           <div className="mt-0.5 truncate text-xs text-ink-400">{where}</div>
-          <div className="mt-0.5 text-[0.7rem] text-ink-500">
+          <div className="mt-0.5 text-mini text-ink-500">
             last checked {current.lastVerifiedAt ? `${Math.round(daysBetween(current.lastVerifiedAt))}d ago` : 'never'}
           </div>
         </div>

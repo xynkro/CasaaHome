@@ -75,7 +75,7 @@ export default function ShoppingView({ onOpenItem }: { onOpenItem: (id: string) 
       <div className="flex items-baseline justify-between">
         <h1 className="text-xl font-semibold tracking-tight text-ink-200">Shopping</h1>
         {Object.values(checked).some(Boolean) && (
-          <button className="text-[0.7rem] text-ink-400 hover:text-ink-200" onClick={clearChecked}>Clear ticks</button>
+          <button className="text-mini text-ink-400 hover:text-ink-200" onClick={clearChecked}>Clear ticks</button>
         )}
       </div>
       <p className="mt-1 text-xs text-ink-400">
@@ -89,7 +89,7 @@ export default function ShoppingView({ onOpenItem }: { onOpenItem: (id: string) 
       ) : (
         <div className="mt-4 space-y-4">
           {!plan.jbWorthIt && plan.jbFolded.length > 0 && (
-            <div className="rounded-xl border border-ink-600 bg-ink-850 px-3 py-2.5 text-[0.7rem] leading-relaxed text-ink-400">
+            <div className="rounded-xl border border-ink-600 bg-ink-850 px-3 py-2.5 text-mini leading-relaxed text-ink-400">
               <span className="font-semibold text-ink-300">JB run skipped.</span>{' '}
               {plan.jbFolded.length} cheaper-in-JB {plan.jbFolded.length === 1 ? 'item was' : 'items were'} folded into the
               Singapore list — the basket is under S${settings.jbMinBasketSgd}, so the causeway is not worth it yet.
@@ -107,13 +107,13 @@ export default function ShoppingView({ onOpenItem }: { onOpenItem: (id: string) 
                   <span className="text-base">{meta.icon}</span>
                   <div className="min-w-0 flex-1">
                     <div className="text-sm font-semibold text-ink-200">{meta.title}</div>
-                    <div className="text-[0.65rem] text-ink-500">{meta.sub}</div>
+                    <div className="text-micro text-ink-500">{meta.sub}</div>
                   </div>
                   <div className="text-right">
                     <div className="tnum text-sm font-semibold text-ink-200">
                       {plan.totals[trip] > 0 ? `~S$${plan.totals[trip].toFixed(0)}` : '—'}
                     </div>
-                    <div className="tnum text-[0.65rem] text-ink-500">{remaining} left</div>
+                    <div className="tnum text-micro text-ink-500">{remaining} left</div>
                   </div>
                 </header>
                 <ul>
@@ -152,7 +152,7 @@ export default function ShoppingView({ onOpenItem }: { onOpenItem: (id: string) 
             </button>
           </div>
           {sent === 'queued' && (
-            <p className="text-[0.68rem] text-ink-500">
+            <p className="text-mini text-ink-500">
               The scheduled job picks this up on its next hourly pass and sends it from the bot.
             </p>
           )}
@@ -170,9 +170,9 @@ export default function ShoppingView({ onOpenItem }: { onOpenItem: (id: string) 
                 <button onClick={() => onOpenItem(e.item.id)} className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-ink-800/60">
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm text-ink-200">{e.item.name}</span>
-                    <span className="block truncate text-[0.68rem] text-ink-500">{e.locationName}</span>
+                    <span className="block truncate text-mini text-ink-500">{e.locationName}</span>
                   </span>
-                  <span className={`shrink-0 text-[0.7rem] ${e.reason === 'expired' ? 'text-rose-300' : e.reason === 'expiring' ? 'text-amber-300' : 'text-ink-400'}`}>
+                  <span className={`shrink-0 text-mini ${e.reason === 'expired' ? 'text-rose-300' : e.reason === 'expiring' ? 'text-amber-300' : 'text-ink-400'}`}>
                     {e.detail}
                   </span>
                 </button>
@@ -196,7 +196,7 @@ function Line({ line, checked, onToggle, onOpen, onBought }: {
     <li className="flex items-center gap-2 border-b border-ink-700/60 px-3 py-2.5 last:border-0">
       <button
         onClick={onToggle}
-        className={`grid size-5 shrink-0 place-items-center rounded-md border text-[0.65rem] transition ${
+        className={`grid size-5 shrink-0 place-items-center rounded-md border text-micro transition ${
           checked ? 'border-brass-500 bg-brass-400 text-ink-900' : 'border-ink-500 text-transparent hover:border-ink-400'
         }`}
         aria-label={checked ? 'Untick' : 'Tick'}
@@ -206,7 +206,7 @@ function Line({ line, checked, onToggle, onOpen, onBought }: {
         <span className={`block text-sm leading-tight ${checked ? 'text-ink-500 line-through' : 'text-ink-200'}`}>
           {line.name}
         </span>
-        <span className="flex items-center gap-1.5 text-[0.66rem] text-ink-500">
+        <span className="flex items-center gap-1.5 text-micro text-ink-500">
           <span className="tnum">× {line.qty} {line.unit}</span>
           <span>·</span>
           <span>{storeShort(line.store)}</span>
