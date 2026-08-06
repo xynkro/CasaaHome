@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store'
 import { uploadPhoto, imageSize } from '../lib/images'
-import { levelMetres } from '../types'
 import { roomsFromWalls, polygonArea } from '../lib/rooms'
 import type { Pt, Room, Wall } from '../types'
 import { Field, Sheet } from '../ui/primitives'
@@ -315,8 +314,7 @@ export default function PlanEditor() {
 
     if (tool === 'marker') {
       if (!markerFor) { setHint('Choose which place you are marking first.'); return }
-      const loc = locations.find(l => l.id === markerFor)
-      void saveLocation({ id: markerFor, pos: { x: toM(p[0]), y: levelMetres(loc?.level), z: toM(p[1]) } })
+      void saveLocation({ id: markerFor, pos: { x: toM(p[0]), y: 0, z: toM(p[1]) } })
       setHint('Marker dropped.'); setMarkerFor('')
     }
   }
@@ -348,7 +346,7 @@ export default function PlanEditor() {
     const taken = new Set<string>()
     setDetected(found.map((polygon, i) => {
       const c = centroid(polygon)
-      const match = rooms.find(r => !taken.has(r.id) && inside(c, r.polygon))
+      const match = rooms.find(r => !taken.has(r.id) && r.polygon.length >= 3 && inside(c, r.polygon))
       if (match) taken.add(match.id)
       return { polygon, name: match?.name ?? `Room ${i + 1}`, area: Math.abs(polygonArea(polygon)) }
     }))
@@ -701,17 +699,34 @@ export default function PlanEditor() {
               className="btn btn-primary flex-[2]"
               onClick={() => {
                 if (!detected) return
-                edit({ rooms: detected.map((d, i) => ({ id: uid(), name: d.name.trim() || `Room ${i + 1}`, polygon: d.polygon })) })
+                // Attach shapes to the rooms that already exist by name rather
+                // than replacing the list. The names were entered deliberately;
+                // a detection pass should not throw them away, and rooms that
+                // were never drawn should keep their empty polygon.
+                const byName = new Map(rooms.map(r => [r.name.trim().toLowerCase(), r]))
+                const claimed = new Set<string>()
+                const merged = detected.map((d, i) => {
+                  const key = d.name.trim().toLowerCase()
+                  const hit = byName.get(key)
+                  if (hit && !claimed.has(hit.id)) {
+                    claimed.add(hit.id)
+                    return { ...hit, polygon: d.polygon }
+                  }
+                  return { id: uid(), name: d.name.trim() || `Room ${i + 1}`, polygon: d.polygon }
+                })
+                const untouched = rooms.filter(r => !claimed.has(r.id) && !merged.some(m => m.id === r.id))
+                edit({ rooms: [...merged, ...untouched] })
                 setDetected(null)
-                setHint(`${detected.length} rooms replaced from the walls.`)
+                setHint(`${merged.length} shapes attached. ${untouched.length} room${untouched.length === 1 ? '' : 's'} left undrawn.`)
               }}
-            >Replace rooms</button>
+            >Attach shapes</button>
           </div>
         }
       >
         <p className="text-mini leading-relaxed text-ink-500">
-          These are the spaces your walls enclose. Names carry over where a detected space
-          matches one you had already. This replaces the whole room list.
+          These are the spaces your walls enclose. Rename any of them to match a room you
+          have already created and the shape attaches to it; rooms you never draw are left
+          alone.
         </p>
         <ul className="mt-3 space-y-2">
           {(detected ?? []).map((d, i) => (

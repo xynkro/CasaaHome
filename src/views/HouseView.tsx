@@ -4,7 +4,6 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { ContactShadows, Html, OrbitControls, PointerLockControls, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { useStore } from '../store'
-import { levelMetres } from '../types'
 import type { HousePlan, LocationKind, Room, StorageLocation, StockStatus, Wall } from '../types'
 import { STATUS_META, STATUS_ORDER, stockStatus } from '../lib/stock'
 import { Empty } from '../ui/primitives'
@@ -127,7 +126,9 @@ export default function HouseView({ onOpenItem }: { onOpenItem: (id: string) => 
         {/* Recentred on the origin so orbit, pan and contact shadow all share
             one pivot regardless of where the plan was drawn. */}
         <group position={[-bounds.cx, 0, -bounds.cz]}>
-          {plan.rooms.map((r, i) => (
+          {/* A room with no polygon is a name waiting for a shape — it groups
+              cupboards and shows up in search, it just does not draw a floor. */}
+          {plan.rooms.filter(r => r.polygon.length >= 3).map((r, i) => (
             <RoomFloor key={r.id} room={r} tint={FLOOR_TINTS[i % FLOOR_TINTS.length]} />
           ))}
           {plan.walls.map(w => (
@@ -269,7 +270,7 @@ function computeBounds(plan: HousePlan, locations: StorageLocation[]): Bounds {
   const xs: number[] = []
   const zs: number[] = []
   for (const w of plan.walls) { xs.push(w.a.x, w.b.x); zs.push(w.a.z, w.b.z) }
-  for (const r of plan.rooms) for (const pt of r.polygon) { xs.push(pt.x); zs.push(pt.z) }
+  for (const r of plan.rooms) for (const pt of r.polygon ?? []) { xs.push(pt.x); zs.push(pt.z) }
   for (const l of locations) if (l.pos) { xs.push(l.pos.x); zs.push(l.pos.z) }
   if (!xs.length) return { minX: 0, maxX: 10, minZ: 0, maxZ: 10, cx: 5, cz: 5, span: 10 }
   const minX = Math.min(...xs), maxX = Math.max(...xs)
@@ -466,11 +467,8 @@ function Furniture({ loc, status, count, active, onSelect }: {
 }) {
   const beadRef = useRef<THREE.Mesh>(null)
   const [hovered, setHovered] = useState(false)
-  const [w, hFull, d] = MASSING[loc.kind] ?? MASSING.other
-  // Mounted units hang off the wall; a wall cupboard at eye level should not
-  // be drawn sitting on the floor, or upper and lower look identical.
-  const mount = levelMetres(loc.level)
-  const h = mount > 0 ? Math.min(hFull, 0.75) : hFull
+  const [w, h, d] = MASSING[loc.kind] ?? MASSING.other
+  const mount = 0
   const alert = status !== 'ok'
   const colour = STATUS_META[status].hex
   const base = KIND_TINT[loc.kind] ?? KIND_TINT.other

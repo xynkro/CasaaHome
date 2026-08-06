@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store'
-import { LOCATION_KINDS, LEVELS, FINISHES, levelLabel, type Finish, type Level, type LocationKind, type StorageLocation } from '../types'
+import { LOCATION_KINDS, type LocationKind, type StorageLocation } from '../types'
 import { stockStatus, STATUS_ORDER } from '../lib/stock'
 import { uploadPhoto, deletePhoto } from '../lib/images'
 import { Empty, Field, Sheet, StatusChip } from '../ui/primitives'
@@ -9,6 +9,9 @@ import { ItemRow } from '../ui/ItemRow'
 import CaptureSweep, { pendingShots } from './CaptureSweep'
 import AddItem from './AddItem'
 import type { StockStatus } from '../types'
+
+/** Kinds are stored lowercase; nobody wants to read "cabinet" in a menu. */
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 const KIND_ICON: Record<LocationKind, string> = {
   cabinet: '▤', drawer: '▭', shelf: '▬', fridge: '❄', freezer: '✻',
@@ -25,6 +28,7 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [sweep, setSweep] = useState(false)
   const [addTo, setAddTo] = useState<string | null>(null)
+  const [roomsOpen, setRoomsOpen] = useState(false)
 
   const locMap = useMemo(() => new Map(locations.map(l => [l.id, l])), [locations])
 
@@ -113,11 +117,6 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
           >
             <span className="w-4 shrink-0 text-center text-ink-500">{KIND_ICON[loc.kind]}</span>
             <span className="truncate text-sm font-medium text-ink-200">{loc.name}</span>
-            {loc.level && (
-              <span className="chip shrink-0 border-ink-600 bg-ink-800 text-micro text-ink-400">
-                {levelLabel(loc.level)}
-              </span>
-            )}
             {loc.longTerm && (
               <span className="chip shrink-0 border-ink-600 bg-ink-800 text-micro text-ink-400">long-term</span>
             )}
@@ -156,7 +155,8 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
       <div className="flex items-baseline justify-between">
         <h1 className="text-xl font-semibold tracking-tight text-ink-200">Places</h1>
         <div className="flex items-center gap-3">
-          <Link to="/plan" className="text-mini font-semibold text-brass-400 hover:text-brass-300">Floorplan →</Link>
+          <button className="text-mini font-semibold text-brass-400 hover:text-brass-300" onClick={() => setRoomsOpen(true)}>Rooms</button>
+          <Link to="/plan" className="text-mini font-semibold text-brass-400 hover:text-brass-300">Plan</Link>
           <button className="btn btn-primary px-3 py-1.5 text-xs" onClick={() => setEditing('new')}>+ Place</button>
         </div>
       </div>
@@ -223,6 +223,8 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
       />
 
       <CaptureSweep open={sweep} onClose={() => setSweep(false)} />
+
+      <RoomManager open={roomsOpen} onClose={() => setRoomsOpen(false)} />
 
       <AddItem
         open={!!addTo}
@@ -299,7 +301,7 @@ function PlaceEditor({ target, onClose }: { target: StorageLocation | 'new' | nu
         <div className="grid grid-cols-2 gap-2">
           <Field label="Kind">
             <select value={v('kind') ?? 'cabinet'} onChange={e => set('kind', e.target.value as LocationKind)}>
-              {LOCATION_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
+              {LOCATION_KINDS.map(k => <option key={k} value={k}>{cap(k)}</option>)}
             </select>
           </Field>
           <Field label="Room">
@@ -310,58 +312,6 @@ function PlaceEditor({ target, onClose }: { target: StorageLocation | 'new' | nu
           </Field>
         </div>
 
-        <Field label="How high" hint="upper or lower?">
-          <select value={v('level') ?? ''} onChange={e => set('level', (e.target.value || null) as Level | null)}>
-            <option value="">Not set</option>
-            {LEVELS.map(l => <option key={l.key} value={l.key}>{l.label} — {l.hint}</option>)}
-          </select>
-        </Field>
-
-        <details className="rounded-lg border border-ink-600 bg-ink-850 px-3 py-2">
-          <summary className="cursor-pointer text-mini font-semibold uppercase tracking-wider text-ink-400">
-            How it looks in 3D
-          </summary>
-          <div className="mt-3 space-y-2.5">
-            <Field label="Finish">
-              <select value={v('finish') ?? ''} onChange={e => set('finish', (e.target.value || null) as Finish | null)}>
-                <option value="">Default for its kind</option>
-                {FINISHES.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
-              </select>
-            </Field>
-
-            <div className="grid grid-cols-3 gap-2">
-              {(['w', 'h', 'd'] as const).map(dim => (
-                <Field key={dim} label={{ w: 'Width', h: 'Height', d: 'Depth' }[dim]} hint="m">
-                  <input
-                    type="number" step="0.05" inputMode="decimal"
-                    placeholder="auto"
-                    value={v('size')?.[dim] ?? ''}
-                    onChange={e => {
-                      const cur = v('size') ?? { w: 0.9, h: 1.15, d: 0.45 }
-                      const n = Number(e.target.value)
-                      set('size', e.target.value === '' && dim === 'w' ? null : { ...cur, [dim]: n })
-                    }}
-                  />
-                </Field>
-              ))}
-            </div>
-
-            <Field label="Facing" hint={`${Math.round(v('rotation') ?? 0)}°`}>
-              <input
-                type="range" min={0} max={355} step={5}
-                value={v('rotation') ?? 0}
-                onChange={e => set('rotation', Number(e.target.value))}
-                className="!p-0"
-              />
-            </Field>
-            <p className="text-mini leading-relaxed text-ink-500">
-              Leave the sizes blank and it uses a sensible default for the kind. Dropping the
-              marker on the floorplan turns it to face the nearest wall automatically, so you
-              only need this slider for something standing in the middle of a room.
-            </p>
-          </div>
-        </details>
-
         <Field label="Inside" hint="nest under another place">
           <select value={v('parentId') ?? ''} onChange={e => set('parentId', e.target.value || null)}>
             <option value="">Nothing — it is a top-level place</option>
@@ -371,18 +321,18 @@ function PlaceEditor({ target, onClose }: { target: StorageLocation | 'new' | nu
           </select>
         </Field>
 
-        <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-ink-600 bg-ink-850 px-3 py-2.5">
+        <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-ink-600 bg-ink-850 px-3 py-3">
           <input
             type="checkbox"
-            className="mt-0.5 size-4 accent-[#E8A33D]"
+            className="mt-0.5 size-5 accent-[#E8A33D]"
             checked={!!v('longTerm')}
             onChange={e => set('longTerm', e.target.checked)}
           />
           <span className="text-xs">
             <span className="font-medium text-ink-200">Long-term storage</span>
             <span className="mt-0.5 block leading-relaxed text-ink-400">
-              Things here get a “you forgot about this” nudge on Telegram. Items tagged seasonal are always exempt,
-              so winter gear and luggage stay quiet.
+              Things in here get a “you forgot about this” nudge on Telegram. Anything ticked
+              seasonal is always exempt, so winter gear and luggage stay quiet.
             </span>
           </span>
         </label>
@@ -433,6 +383,100 @@ function PlaceEditor({ target, onClose }: { target: StorageLocation | 'new' | nu
           </div>
         )}
       </div>
+    </Sheet>
+  )
+}
+
+
+/**
+ * Rooms, by name.
+ *
+ * A room used to only come into existence by being drawn on the floorplan,
+ * which put a tracing exercise in front of the thing everyone actually wants:
+ * somewhere to file the kitchen cupboards. Rooms are named here and shaped
+ * later — or never. The floorplan's Detect rooms attaches polygons to these by
+ * name rather than replacing them.
+ */
+function RoomManager({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const plan = useStore(s => s.plan)
+  const savePlan = useStore(s => s.savePlan)
+  const locations = useStore(s => s.locations)
+  const [name, setName] = useState('')
+  const [editing, setEditing] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+
+  const rooms = plan.rooms ?? []
+  const usedBy = (id: string) => locations.filter(l => l.roomId === id).length
+
+  const add = async () => {
+    const n = name.trim()
+    if (!n) return
+    await savePlan({
+      rooms: [...rooms, { id: crypto.randomUUID().slice(0, 8), name: n, polygon: [] }],
+    })
+    setName('')
+  }
+
+  return (
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title={`Rooms (${rooms.length})`}
+      footer={
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Add a room"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void add() } }}
+          />
+          <button className="btn btn-primary shrink-0" disabled={!name.trim()} onClick={add}>Add</button>
+        </div>
+      }
+    >
+      {rooms.length === 0 ? (
+        <p className="py-6 text-center text-xs text-ink-400">
+          No rooms yet. Name them below — you can place them on the floorplan later, or not at all.
+        </p>
+      ) : (
+        <ul className="divide-y divide-ink-700/60">
+          {rooms.map(r => (
+            <li key={r.id} className="flex items-center gap-2 py-2">
+              {editing === r.id ? (
+                <>
+                  <input type="text" value={draft} autoFocus onChange={e => setDraft(e.target.value)} />
+                  <button
+                    className="btn btn-primary shrink-0 px-3 py-1 text-xs"
+                    onClick={async () => {
+                      await savePlan({ rooms: rooms.map(x => x.id === r.id ? { ...x, name: draft.trim() || x.name } : x) })
+                      setEditing(null)
+                    }}
+                  >Save</button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className="min-w-0 flex-1 text-left"
+                    onClick={() => { setEditing(r.id); setDraft(r.name) }}
+                  >
+                    <span className="block truncate text-sm text-ink-200">{r.name}</span>
+                    <span className="block text-micro text-ink-500">
+                      {usedBy(r.id) || 'no'} {usedBy(r.id) === 1 ? 'place' : 'places'}
+                      {r.polygon.length >= 3 ? ' · drawn on the plan' : ' · not drawn yet'}
+                    </span>
+                  </button>
+                  <button
+                    className="tap text-ink-400 hover:text-rose-300"
+                    aria-label={`Delete ${r.name}`}
+                    onClick={() => savePlan({ rooms: rooms.filter(x => x.id !== r.id) })}
+                  >×</button>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </Sheet>
   )
 }
