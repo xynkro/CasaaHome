@@ -6,6 +6,8 @@ import { buildUseSoon } from '../lib/shopping'
 import { Empty, Stat } from '../ui/primitives'
 import { ItemRow, SectionCard } from '../ui/ItemRow'
 import VerifySweep from './VerifySweep'
+import SnapPlace from './SnapPlace'
+import RoomBoard from './RoomBoard'
 import type { StockStatus } from '../types'
 
 export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => void }) {
@@ -17,6 +19,8 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
   const loaded = useStore(s => s.loaded)
   const user = useStore(s => s.user)
   const [sweepOpen, setSweepOpen] = useState(false)
+  const [snapping, setSnapping] = useState(false)
+  const [openRoom, setOpenRoom] = useState<string | null>(null)
 
   const locMap = useMemo(() => new Map(locations.map(l => [l.id, l])), [locations])
   const live = useMemo(() => items.filter(i => !i.archived), [items])
@@ -57,12 +61,13 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
         <Header greeting={greeting} name={who} house={settings.householdName} />
         <div className="mt-6">
           <Empty
-            icon="📦"
-            title="Nothing catalogued yet"
-            hint="Start with one cupboard. Add the places first, then the things inside them — the app gets useful the moment a single shelf is in."
-            action={<Link to="/places" className="btn btn-primary">Set up places</Link>}
+            icon="📷"
+            title="Start with one cupboard"
+            hint="Open it, hit Snap, and the camera comes up. Name it and tag what is inside while you are looking at the photo — that one cupboard is already searchable."
+            action={<button className="btn btn-primary" onClick={() => setSnapping(true)}>Snap a cupboard</button>}
           />
         </div>
+        <SnapPlace open={snapping} onClose={() => setSnapping(false)} />
       </div>
     )
   }
@@ -139,6 +144,51 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
           </SectionCard>
         )}
 
+        <SectionCard
+          title="Your rooms"
+          count={plan.rooms.length}
+          action={
+            <button className="text-mini font-semibold text-brass-400 hover:text-brass-300" onClick={() => setSnapping(true)}>
+              Snap a cupboard →
+            </button>
+          }
+        >
+          {plan.rooms.length === 0 ? (
+            <div className="px-3 py-6 text-center text-xs leading-relaxed text-ink-400">
+              No rooms yet. Add them on the Places tab.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-px bg-ink-700/60 sm:grid-cols-3">
+              {plan.rooms.map(r => {
+                const n = locations.filter(l => l.roomId === r.id).length
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => setOpenRoom(r.id)}
+                    className="group bg-ink-800 text-left transition hover:bg-ink-850"
+                  >
+                    {r.photoUrl ? (
+                      <img src={r.photoUrl} alt="" loading="lazy" className="aspect-[4/3] w-full object-cover" />
+                    ) : (
+                      // Not an error state — most rooms simply have not been
+                      // photographed yet, and the invitation belongs here.
+                      <div className="grid aspect-[4/3] w-full place-items-center bg-ink-850 text-lg text-ink-500">
+                        <span className="opacity-70">📷</span>
+                      </div>
+                    )}
+                    <div className="px-2.5 py-2">
+                      <div className="truncate text-mini font-medium text-ink-200">{r.name}</div>
+                      <div className="truncate text-micro text-ink-500">
+                        {n ? `${n} ${n === 1 ? 'cupboard' : 'cupboards'}` : 'nothing yet'}
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </SectionCard>
+
         {events.length > 0 && (
           <SectionCard title="Recent activity">
             <ul className="divide-y divide-ink-700/60">
@@ -168,6 +218,8 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
       </div>
 
       <VerifySweep open={sweepOpen} onClose={() => setSweepOpen(false)} candidates={stale} />
+      <SnapPlace open={snapping} onClose={() => setSnapping(false)} />
+      <RoomBoard roomId={openRoom} onClose={() => setOpenRoom(null)} onOpenItem={onOpenItem} />
     </div>
   )
 }

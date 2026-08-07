@@ -51,6 +51,12 @@ export interface StorageLocation {
   parentId: string | null
   /** Position in the 3D house, metres. y = height above floor. */
   pos?: { x: number; y: number; z: number } | null
+  /**
+   * Where this cupboard sits in its room's photo, as fractions of the image
+   * (0–1). Stored relative so replacing the room photo at a different size
+   * does not move every pin.
+   */
+  pin?: { x: number; y: number } | null
   photoUrls: string[]
   /**
    * The two shots that make a place findable: `closed` so you can recognise
@@ -156,17 +162,18 @@ export interface Wall {
 export interface Room {
   id: string
   name: string
-  /**
-   * Closed polygon in plan metres, or empty.
-   *
-   * A room is a name first and a shape second. You know your home has a
-   * Yard Toilet long before you have traced one, and everything that matters —
-   * grouping cupboards, the breadcrumb, search — needs only the name. The
-   * polygon is attached later, if ever, and its absence just means the room
-   * does not draw a floor in 3D.
-   */
-  polygon: Pt[]
+  /** Vestigial: traced floorplan geometry, kept so old documents still parse. */
+  polygon?: Pt[]
   color?: string
+  /**
+   * A wide shot of the room, which acts as its map.
+   *
+   * Far more useful than the traced floorplan and free to make: you already
+   * know your own rooms by sight, so a photograph with the cupboards pinned on
+   * it answers "which one is that?" instantly, with no tracing and no
+   * modelling.
+   */
+  photoUrl?: string | null
   /**
    * A captured photographic walkthrough for this room — Matterport, Polycam,
    * Kuula or similar. No amount of code turns a floorplan into one of these;

@@ -12,21 +12,18 @@
     "notify:dry": "DRY_RUN=true tsx scripts/notify.ts",
     "typecheck": "tsc -b --noEmit",
     "rules:deploy": "firebase deploy --only firestore:rules,storage --project casaahome",
-    "test": "tsx scripts/logic.test.ts && tsx scripts/rooms.test.ts && tsx scripts/tags.test.ts",
+    "test": "tsx scripts/logic.test.ts && tsx scripts/tags.test.ts",
     "emu": "firebase emulators:start --project casaahome",
     "dev:emu": "VITE_USE_EMULATOR=true vite",
     "build:hosting": "DEPLOY_BASE=/ tsc -b && DEPLOY_BASE=/ vite build",
     "deploy:hosting": "npm run build:hosting && firebase deploy --only hosting --project casaahome"
   },
   "dependencies": {
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.7.0",
     "firebase": "^12.17.0",
     "fuse.js": "^7.5.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.2",
-    "three": "^0.185.1",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
@@ -34,7 +31,6 @@
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@types/three": "^0.185.3",
     "@vitejs/plugin-react": "^6.0.4",
     "firebase-admin": "^14.2.0",
     "oxlint": "^1.75.0",

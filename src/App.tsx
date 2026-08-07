@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useStore } from './store'
 import { indexedDbUsable } from './firebase'
@@ -9,11 +9,6 @@ import ShoppingView from './views/ShoppingView'
 import SettingsView from './views/SettingsView'
 import ItemSheet from './views/ItemSheet'
 import { Empty } from './ui/primitives'
-
-// Three.js is ~600 kB. Nobody should pay for it while checking if there is
-// still coffee.
-const HouseView = lazy(() => import('./views/HouseView'))
-const PlanEditor = lazy(() => import('./views/PlanEditor'))
 
 /**
  * Drawn, not typed.
@@ -36,7 +31,6 @@ const Icon = ({ d, filled }: { d: string; filled?: boolean }) => (
 const PATHS = {
   home:   'M3 10.4 12 3.5l9 6.9M5.4 9.2V19a1.4 1.4 0 0 0 1.4 1.4h10.4A1.4 1.4 0 0 0 18.6 19V9.2',
   search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14ZM16.2 16.2 21 21',
-  house:  'M3.5 20.5h17M5 20.5V9.8l7-5.3 7 5.3v10.7M9.5 20.5v-5h5v5',
   places: 'M4 4.5h16v5H4zM4 14.5h16v5H4zM8 7h.01M8 17h.01',
   shop:   'M3 5h2.2l2.1 10.3a1.5 1.5 0 0 0 1.5 1.2h8.4a1.5 1.5 0 0 0 1.5-1.2L20.5 8H6.2M9.5 20.2h.01M17 20.2h.01',
 }
@@ -44,7 +38,6 @@ const PATHS = {
 const TABS = [
   { to: '/', label: 'Home', d: PATHS.home },
   { to: '/search', label: 'Search', d: PATHS.search },
-  { to: '/house', label: 'House', d: PATHS.house },
   { to: '/places', label: 'Places', d: PATHS.places },
   { to: '/shop', label: 'Shop', d: PATHS.shop },
 ]
@@ -139,22 +132,6 @@ export default function App() {
           <Route path="/places" element={<LocationsView onOpenItem={setOpenItem} />} />
           <Route path="/shop" element={<ShoppingView onOpenItem={setOpenItem} />} />
           <Route path="/settings" element={<SettingsView />} />
-          <Route
-            path="/house"
-            element={
-              <Suspense fallback={<Loading label="Building the house…" />}>
-                <HouseView onOpenItem={setOpenItem} />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/plan"
-            element={
-              <Suspense fallback={<Loading label="Loading plan editor…" />}>
-                <PlanEditor />
-              </Suspense>
-            }
-          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
@@ -187,17 +164,6 @@ export default function App() {
       </nav>
 
       <ItemSheet itemId={openItem} onClose={() => setOpenItem(null)} />
-    </div>
-  )
-}
-
-function Loading({ label }: { label: string }) {
-  return (
-    <div className="grid h-[70dvh] place-items-center text-sm text-ink-400">
-      <div className="flex items-center gap-2">
-        <span className="size-2 animate-pulse rounded-full bg-brass-400" />
-        {label}
-      </div>
     </div>
   )
 }

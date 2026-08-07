@@ -1,5 +1,4 @@
 import { useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useStore } from '../store'
 import { LOCATION_KINDS, type LocationKind, type StorageLocation } from '../types'
 import { stockStatus, STATUS_ORDER } from '../lib/stock'
@@ -9,6 +8,7 @@ import { ItemRow } from '../ui/ItemRow'
 import CaptureSweep, { pendingShots } from './CaptureSweep'
 import { parseTags, tagCloud } from '../lib/tags'
 import AddItem from './AddItem'
+import SnapPlace from './SnapPlace'
 import type { StockStatus } from '../types'
 
 /** Kinds are stored lowercase; nobody wants to read "cabinet" in a menu. */
@@ -30,6 +30,7 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
   const [sweep, setSweep] = useState(false)
   const [addTo, setAddTo] = useState<string | null>(null)
   const [roomsOpen, setRoomsOpen] = useState(false)
+  const [snapping, setSnapping] = useState(false)
 
   const locMap = useMemo(() => new Map(locations.map(l => [l.id, l])), [locations])
 
@@ -161,13 +162,18 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
         <h1 className="text-xl font-semibold tracking-tight text-ink-200">Places</h1>
         <div className="flex items-center gap-3">
           <button className="text-mini font-semibold text-brass-400 hover:text-brass-300" onClick={() => setRoomsOpen(true)}>Rooms</button>
-          <Link to="/plan" className="text-mini font-semibold text-brass-400 hover:text-brass-300">Plan</Link>
-          <button className="btn btn-primary px-3 py-1.5 text-xs" onClick={() => setEditing('new')}>+ Place</button>
         </div>
       </div>
       <p className="mt-1 text-xs leading-relaxed text-ink-400">
         Cupboards, drawers, the store room. Nest them — a cabinet can hold shelves, a shelf can hold boxes.
       </p>
+
+      <div className="mt-3 flex gap-2">
+        <button className="btn btn-primary flex-1 py-3" onClick={() => setSnapping(true)}>
+          Snap a cupboard
+        </button>
+        <button className="btn btn-ghost" onClick={() => setEditing('new')}>Type one in</button>
+      </div>
 
       {missingShots > 0 && (
         <button
@@ -190,8 +196,8 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
           <Empty
             icon="▤"
             title="No places yet"
-            hint="Add the big ones first: Kitchen tall cabinet, Store room, Fridge. You can subdivide later."
-            action={<button className="btn btn-primary" onClick={() => setEditing('new')}>Add first place</button>}
+            hint="Stand at a cupboard, open it, and hit Snap. The camera opens, then you name it and tag what is inside — all while looking at the photo."
+            action={<button className="btn btn-primary" onClick={() => setSnapping(true)}>Snap the first one</button>}
           />
         </div>
       ) : (
@@ -230,6 +236,8 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
       <CaptureSweep open={sweep} onClose={() => setSweep(false)} />
 
       <RoomManager open={roomsOpen} onClose={() => setRoomsOpen(false)} />
+
+      <SnapPlace open={snapping} onClose={() => setSnapping(false)} />
 
       <AddItem
         open={!!addTo}
@@ -389,7 +397,7 @@ function PlaceEditor({ target, onClose }: { target: StorageLocation | 'new' | nu
 
         {existing && (
           <div>
-            <div className="mb-1 text-mini font-semibold uppercase tracking-wider text-ink-400">Photos</div>
+            <div className="mb-1 text-mini font-medium text-ink-400">Photos</div>
             <div className="scroll-thin flex gap-2 overflow-x-auto pb-1">
               {(existing.photoUrls ?? []).map(url => (
                 <div key={url} className="relative shrink-0">
@@ -460,7 +468,7 @@ function RoomManager({ open, onClose }: { open: boolean; onClose: () => void }) 
     const n = name.trim()
     if (!n) return
     await savePlan({
-      rooms: [...rooms, { id: crypto.randomUUID().slice(0, 8), name: n, polygon: [] }],
+      rooms: [...rooms, { id: crypto.randomUUID().slice(0, 8), name: n }],
     })
     setName('')
   }
@@ -511,7 +519,6 @@ function RoomManager({ open, onClose }: { open: boolean; onClose: () => void }) 
                     <span className="block truncate text-sm text-ink-200">{r.name}</span>
                     <span className="block text-micro text-ink-500">
                       {usedBy(r.id) || 'no'} {usedBy(r.id) === 1 ? 'place' : 'places'}
-                      {r.polygon.length >= 3 ? ' · drawn on the plan' : ' · not drawn yet'}
                     </span>
                   </button>
                   <button
