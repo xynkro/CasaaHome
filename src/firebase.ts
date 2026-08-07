@@ -6,7 +6,7 @@ import {
 import {
   getAuth, initializeAuth, GoogleAuthProvider, connectAuthEmulator,
   indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence,
-  inMemoryPersistence, browserPopupRedirectResolver, type Auth,
+  inMemoryPersistence, browserPopupRedirectResolver, onAuthStateChanged, type Auth,
 } from 'firebase/auth'
 import { getStorage, connectStorageEmulator } from 'firebase/storage'
 
@@ -105,7 +105,7 @@ if (import.meta.env.VITE_USE_EMULATOR === 'true') {
 
   // Sign in without the OAuth popup. The Auth emulator accepts an unsigned
   // claims blob in place of a real Google ID token.
-  ;(globalThis as unknown as Record<string, unknown>).__emuSignIn = async (email: string) => {
+  const emuSignIn = async (email: string) => {
     const { signInWithCredential } = await import('firebase/auth')
     return signInWithCredential(
       auth,
@@ -113,5 +113,19 @@ if (import.meta.env.VITE_USE_EMULATOR === 'true') {
         JSON.stringify({ sub: email, email, email_verified: true, name: email.split('@')[0] }),
       ),
     )
+  }
+  ;(globalThis as unknown as Record<string, unknown>).__emuSignIn = emuSignIn
+
+  // Testing on a real device, the sign-in button is a dead end: an installed
+  // PWA hands OAuth to a system web-auth sheet that lives outside the app, so
+  // nothing can drive it and the emulator's own account picker is unreachable.
+  // With VITE_EMULATOR_USER set, the emulator build signs itself in and the
+  // whole app is exercisable on the phone. Production never sets either flag.
+  const auto = import.meta.env.VITE_EMULATOR_USER
+  if (auto) {
+    const stop = onAuthStateChanged(auth, u => {
+      stop()
+      if (!u) void emuSignIn(auto).catch(() => {})
+    })
   }
 }

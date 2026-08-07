@@ -53,7 +53,16 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
   }, [])
 
   // Prefer the nickname the household set over whatever Google has on file.
-  const who = (settings.nicknames?.[user?.email ?? ''] ?? user?.displayName?.split(' ')[0] ?? '').slice(0, 18)
+  // Some accounts have no display name and the provider hands back the email
+  // instead; "Good afternoon, the.disruptive.com" is worse than no name at all,
+  // so anything that looks like an address is dropped rather than truncated.
+  const who = useMemo(() => {
+    const set = settings.nicknames?.[user?.email ?? '']
+    if (set) return set.slice(0, 18)
+    const given = user?.displayName?.trim().split(/\s+/)[0] ?? ''
+    if (!given || given.includes('@') || given.length > 18) return ''
+    return given
+  }, [settings.nicknames, user?.email, user?.displayName])
 
   if (loaded && live.length === 0) {
     return (
@@ -158,33 +167,41 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
               No rooms yet. Add them on the Places tab.
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-px bg-ink-700/60 sm:grid-cols-3">
+            /* Two columns at every width. A responsive third column looks
+               tidier on a laptop and then leaves ragged holes on a phone,
+               which is where this actually gets used. */
+            <div className="grid grid-cols-2 gap-px bg-ink-700/60">
               {plan.rooms.map(r => {
                 const n = locations.filter(l => l.roomId === r.id).length
                 return (
                   <button
                     key={r.id}
                     onClick={() => setOpenRoom(r.id)}
-                    className="group bg-ink-800 text-left transition hover:bg-ink-850"
+                    className="bg-ink-800 text-left transition active:bg-ink-850"
                   >
                     {r.photoUrl ? (
                       <img src={r.photoUrl} alt="" loading="lazy" className="aspect-[4/3] w-full object-cover" />
                     ) : (
-                      // Not an error state — most rooms simply have not been
-                      // photographed yet, and the invitation belongs here.
-                      <div className="grid aspect-[4/3] w-full place-items-center bg-ink-850 text-lg text-ink-500">
-                        <span className="opacity-70">📷</span>
+                      // An un-photographed room should recede, not shout. The
+                      // ground colour puts it a step BEHIND the photographed
+                      // ones instead of a bright white block that pulls the eye
+                      // to whatever you have not done yet.
+                      <div className="grid aspect-[4/3] w-full place-items-center gap-1 bg-ink-900">
+                        <Lens />
                       </div>
                     )}
                     <div className="px-2.5 py-2">
                       <div className="truncate text-mini font-medium text-ink-200">{r.name}</div>
                       <div className="truncate text-micro text-ink-500">
-                        {n ? `${n} ${n === 1 ? 'cupboard' : 'cupboards'}` : 'nothing yet'}
+                        {n ? `${n} ${n === 1 ? 'cupboard' : 'cupboards'}` : 'no photo yet'}
                       </div>
                     </div>
                   </button>
                 )
               })}
+              {/* An odd number of rooms would otherwise leave the seam colour
+                  showing through the last cell, which reads as a broken tile. */}
+              {plan.rooms.length % 2 === 1 && <div className="bg-ink-800" />}
             </div>
           )}
         </SectionCard>
@@ -221,6 +238,17 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
       <SnapPlace open={snapping} onClose={() => setSnapping(false)} />
       <RoomBoard roomId={openRoom} onClose={() => setOpenRoom(null)} onOpenItem={onOpenItem} />
     </div>
+  )
+}
+
+/** The empty-room mark: a lens, drawn to match the tab bar's stroke weight. */
+function Lens() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6 text-ink-500"
+      fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3.5 8.5h3.2l1.4-2h7.8l1.4 2h3.2v9.5H3.5z" />
+      <circle cx="12" cy="12.8" r="3.1" />
+    </svg>
   )
 }
 
