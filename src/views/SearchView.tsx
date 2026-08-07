@@ -1,13 +1,28 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import Fuse from 'fuse.js'
 import { useStore, locationPath } from '../store'
-import type { StockStatus } from '../types'
+import type { StockStatus, StorageLocation } from '../types'
 import { STATUS_ORDER, stockStatus } from '../lib/stock'
 import { Empty } from '../ui/primitives'
 import { ItemRow } from '../ui/ItemRow'
 import AddItem from './AddItem'
+import PlaceSheet from './PlaceSheet'
+import { parseTags, tagCloud, tagQuery } from '../lib/tags'
 
-type Filter = 'all' | 'attention' | 'perishable' | 'seasonal' | 'unfiled'
+type Filter = 'all' | 'attention' | 'places' | 'perishable' | 'seasonal' | 'unfiled'
+
+/**
+ * Search covers cupboards as well as things.
+ *
+ * Most of a home is never itemised — you photograph a cupboard, type a few
+ * words about what is in it, and move on. Searching only the item list made
+ * every one of those cupboards invisible, which is the opposite of the point.
+ * A place matches on its name, its room, its kind and its contents note, and
+ * comes back with the photo attached.
+ */
+type Hit =
+  | { kind: 'item'; id: string; title: string; where: string; blob: string; tags: string[] }
+  | { kind: 'place'; id: string; title: string; where: string; blob: string; tags: string[] }
 
 export default function SearchView({ onOpenItem }: { onOpenItem: (id: string) => void }) {
   const items = useStore(s => s.items)
@@ -19,6 +34,7 @@ export default function SearchView({ onOpenItem }: { onOpenItem: (id: string) =>
   const [filter, setFilter] = useState<Filter>('all')
   const [category, setCategory] = useState('')
   const [adding, setAdding] = useState(false)
+  const [openPlace, setOpenPlace] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const deferred = useDeferredValue(q)
 
@@ -33,22 +49,38 @@ export default function SearchView({ onOpenItem }: { onOpenItem: (id: string) =>
 
   // Index includes the resolved location path, so "kitchen" finds everything
   // in the kitchen even though items only store a location id.
-  const indexed = useMemo(
-    () => items
-      .filter(i => !i.archived)
-      .map(i => ({ item: i, where: locationPath(i.locationId, locMap, plan) })),
-    [items, locMap, plan],
-  )
+  const itemById = useMemo(() => new Map(items.map(i => [i.id, i])), [items])
+
+  const indexed = useMemo<Hit[]>(() => {
+    const out: Hit[] = []
+    for (const i of items) {
+      if (i.archived) continue
+      const where = locationPath(i.locationId, locMap, plan)
+      const tags = [...(i.tags ?? []).map(t => t.toLowerCase()), ...parseTags(i.notes)]
+      out.push({
+        kind: 'item', id: i.id, title: i.name, where, tags,
+        blob: [i.name, i.brand, where, i.category, tags.join(' '), i.notes].filter(Boolean).join(' '),
+      })
+    }
+    for (const l of locations) {
+      const where = locationPath(l.id, locMap, plan)
+      const tags = parseTags(l.contents)
+      out.push({
+        kind: 'place', id: l.id, title: l.name, where, tags,
+        blob: [l.name, where, l.kind, l.contents, l.notes].filter(Boolean).join(' '),
+      })
+    }
+    return out
+  }, [items, locations, locMap, plan])
 
   const fuse = useMemo(
     () => new Fuse(indexed, {
       keys: [
-        { name: 'item.name', weight: 3 },
-        { name: 'item.brand', weight: 1.5 },
+        { name: 'title', weight: 3 },
+        // A tag was typed on purpose, so it should beat an incidental word.
+        { name: 'tags', weight: 2.5 },
         { name: 'where', weight: 1.5 },
-        { name: 'item.category', weight: 1 },
-        { name: 'item.tags', weight: 1 },
-        { name: 'item.notes', weight: 0.4 },
+        { name: 'blob', weight: 1 },
       ],
       threshold: 0.38,
       ignoreLocation: true,
@@ -58,32 +90,46 @@ export default function SearchView({ onOpenItem }: { onOpenItem: (id: string) =>
   )
 
   const results = useMemo(() => {
-    let base = deferred.trim().length >= 2
-      ? fuse.search(deferred.trim()).map(r => r.item)
-      : indexed
+    const q = deferred.trim()
+    // "#wine" means only things tagged wine — an exact filter, not a fuzzy
+    // match that also drags in every mention of the word.
+    const exact = tagQuery(q)
+    let base = exact
+      ? indexed.filter(h => h.tags.includes(exact))
+      : q.length >= 2 ? fuse.search(q).map(r => r.item) : indexed
 
-    if (category) base = base.filter(r => r.item.category === category)
+    const item = (h: Hit) => (h.kind === 'item' ? itemById.get(h.id) : undefined)
+    const place = (h: Hit) => (h.kind === 'place' ? locMap.get(h.id) : undefined)
+
+    if (category) base = base.filter(h => item(h)?.category === category)
 
     switch (filter) {
-      case 'attention':
-        base = base.filter(r => stockStatus(r.item, settings) !== 'ok'); break
-      case 'perishable':
-        base = base.filter(r => r.item.perishable); break
-      case 'seasonal':
-        base = base.filter(r => r.item.seasonal); break
-      case 'unfiled':
-        base = base.filter(r => !r.item.locationId); break
+      case 'places':     base = base.filter(h => h.kind === 'place'); break
+      case 'attention':  base = base.filter(h => { const i = item(h); return i && stockStatus(i, settings) !== 'ok' }); break
+      case 'perishable': base = base.filter(h => item(h)?.perishable); break
+      case 'seasonal':   base = base.filter(h => item(h)?.seasonal); break
+      case 'unfiled':    base = base.filter(h => h.kind === 'item' && !item(h)?.locationId); break
     }
 
-    if (deferred.trim().length < 2) {
+    // With no query, lead with what needs attention, then places, then the rest.
+    if (q.length < 2) {
+      const rank = (h: Hit) => {
+        const i = item(h)
+        if (i) return STATUS_ORDER[stockStatus(i, settings) as StockStatus]
+        return place(h)?.shots?.open ? 4.5 : 5
+      }
       base = [...base].sort((a, b) => {
-        const sa = STATUS_ORDER[stockStatus(a.item, settings) as StockStatus]
-        const sb = STATUS_ORDER[stockStatus(b.item, settings) as StockStatus]
-        return sa === sb ? a.item.name.localeCompare(b.item.name) : sa - sb
+        const ra = rank(a), rb = rank(b)
+        return ra === rb ? a.title.localeCompare(b.title) : ra - rb
       })
     }
     return base
-  }, [deferred, fuse, indexed, filter, category, settings])
+  }, [deferred, fuse, indexed, filter, category, settings, itemById, locMap])
+
+  const allTags = useMemo(
+    () => tagCloud([...locations.map(l => l.contents), ...items.map(i => i.notes)]).slice(0, 24),
+    [locations, items],
+  )
 
   const categories = useMemo(() => {
     const set = new Set(items.map(i => i.category).filter(Boolean))
@@ -106,8 +152,8 @@ export default function SearchView({ onOpenItem }: { onOpenItem: (id: string) =>
 
         <div className="scroll-thin mt-2 flex gap-1.5 overflow-x-auto pb-1">
           {([
-            ['all', 'All'], ['attention', 'Needs attention'], ['perishable', 'Perishable'],
-            ['seasonal', 'Seasonal'], ['unfiled', 'Unfiled'],
+            ['all', 'All'], ['attention', 'Needs attention'], ['places', 'Cupboards'],
+            ['perishable', 'Perishable'], ['seasonal', 'Seasonal'], ['unfiled', 'Unfiled'],
           ] as [Filter, string][]).map(([k, label]) => (
             <button
               key={k}
@@ -130,6 +176,22 @@ export default function SearchView({ onOpenItem }: { onOpenItem: (id: string) =>
         </div>
       </div>
 
+      {allTags.length > 0 && (
+        <div className="scroll-thin -mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4 pb-1">
+          {allTags.map(t => (
+            <button
+              key={t.tag}
+              onClick={() => setQ(q === `#${t.tag}` ? '' : `#${t.tag}`)}
+              className={`chip shrink-0 ${
+                q === `#${t.tag}`
+                  ? 'border-brass-500/50 bg-brass-400/12 text-brass-300'
+                  : 'border-ink-600 bg-ink-800 text-ink-400'
+              }`}
+            >#{t.tag} <span className="tnum opacity-60">{t.count}</span></button>
+          ))}
+        </div>
+      )}
+
       <div className="mt-1 text-mini text-ink-500">
         {results.length} {results.length === 1 ? 'item' : 'items'}
       </div>
@@ -145,15 +207,17 @@ export default function SearchView({ onOpenItem }: { onOpenItem: (id: string) =>
         </div>
       ) : (
         <div className="panel mt-2 overflow-hidden">
-          {results.slice(0, 200).map(r => (
+          {results.slice(0, 200).map(h => h.kind === 'item' ? (
             <ItemRow
-              key={r.item.id}
-              item={r.item}
+              key={`i${h.id}`}
+              item={itemById.get(h.id)!}
               settings={settings}
               locMap={locMap}
               plan={plan}
               onOpen={onOpenItem}
             />
+          ) : (
+            <PlaceResult key={`p${h.id}`} loc={locMap.get(h.id)!} where={h.where} onOpen={setOpenPlace} />
           ))}
           {results.length > 200 && (
             <div className="border-t border-ink-700 px-3 py-2 text-center text-mini text-ink-400">
@@ -164,6 +228,36 @@ export default function SearchView({ onOpenItem }: { onOpenItem: (id: string) =>
       )}
 
       <AddItem open={adding} onClose={() => setAdding(false)} onOpenItem={onOpenItem} />
+      <PlaceSheet locationId={openPlace} onClose={() => setOpenPlace(null)} onOpenItem={onOpenItem} />
     </div>
+  )
+}
+
+/** A cupboard in the results, led by its open shot — the photo is the answer. */
+function PlaceResult({ loc, where, onOpen }: {
+  loc: StorageLocation; where: string; onOpen: (id: string) => void
+}) {
+  const thumb = loc.shots?.open ?? loc.shots?.closed ?? loc.photoUrls?.[0]
+  return (
+    <button
+      onClick={() => onOpen(loc.id)}
+      className="flex w-full items-center gap-3 border-b border-ink-700/60 px-3 py-2.5 text-left transition last:border-0 hover:bg-ink-800/60"
+    >
+      {thumb
+        ? <img src={thumb} alt="" loading="lazy" className="size-11 shrink-0 rounded-lg object-cover" />
+        : <div className="grid size-11 shrink-0 place-items-center rounded-lg bg-ink-700/60 text-ink-400">▤</div>}
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5">
+          <span className="truncate text-sm font-medium text-ink-200">{loc.name}</span>
+          <span className="chip shrink-0 border-ink-600 bg-ink-800 text-ink-400">cupboard</span>
+        </span>
+        <span className="mt-0.5 block truncate text-mini text-ink-400">
+          {parseTags(loc.contents).length
+            ? parseTags(loc.contents).map(t => `#${t}`).join(' ')
+            : (loc.contents || where)}
+        </span>
+      </span>
+      <span className="shrink-0 text-ink-500">→</span>
+    </button>
   )
 }

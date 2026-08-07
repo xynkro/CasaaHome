@@ -7,6 +7,7 @@ import { uploadPhoto, deletePhoto } from '../lib/images'
 import { Empty, Field, Sheet, StatusChip } from '../ui/primitives'
 import { ItemRow } from '../ui/ItemRow'
 import CaptureSweep, { pendingShots } from './CaptureSweep'
+import { parseTags, tagCloud } from '../lib/tags'
 import AddItem from './AddItem'
 import type { StockStatus } from '../types'
 
@@ -136,7 +137,11 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
               <ItemRow key={i.id} item={i} settings={settings} locMap={locMap} plan={plan} onOpen={onOpenItem} dense />
             ))}
             {own.length === 0 && kids.length === 0 && (
-              <div className="px-4 py-3 text-center text-mini text-ink-500">Nothing in here yet</div>
+              <div className="px-4 py-3 text-center text-mini text-ink-500">
+                {loc.contents
+                  ? 'Photographed, not itemised — searchable by its contents note'
+                  : 'Nothing in here yet'}
+              </div>
             )}
             <button
               onClick={() => setAddTo(loc.id)}
@@ -259,6 +264,12 @@ function PlaceEditor({ target, onClose }: { target: StorageLocation | 'new' | nu
   const set = <K extends keyof StorageLocation>(k: K, val: StorageLocation[K]) =>
     setD(p => ({ ...p, [k]: val }))
 
+  const contentTags = parseTags(v('contents'))
+  const suggestions = tagCloud(locations.map(l => l.contents))
+    .map(t => t.tag)
+    .filter(t => !contentTags.includes(t))
+    .slice(0, 10)
+
   const addPhoto = async (files: FileList | null) => {
     if (!files?.length || !existing) return
     setBusy(true)
@@ -336,6 +347,43 @@ function PlaceEditor({ target, onClose }: { target: StorageLocation | 'new' | nu
             </span>
           </span>
         </label>
+
+        <Field label="What is in here" hint="tag it with #">
+          <textarea
+            rows={3}
+            placeholder="#cups #teacups #wine #beer"
+            value={v('contents') ?? ''}
+            onChange={e => set('contents', e.target.value)}
+          />
+        </Field>
+
+        {contentTags.length > 0 && (
+          <div className="-mt-1 flex flex-wrap gap-1">
+            {contentTags.map(t => (
+              <span key={t} className="chip border-brass-500/40 bg-brass-400/12 text-brass-300">#{t}</span>
+            ))}
+          </div>
+        )}
+
+        {suggestions.length > 0 && (
+          <div className="-mt-1">
+            <div className="mb-1 text-micro text-ink-500">Already used elsewhere — tap to add</div>
+            <div className="flex flex-wrap gap-1">
+              {suggestions.map(t => (
+                <button
+                  key={t}
+                  className="chip border-ink-600 bg-ink-800 text-ink-400 hover:border-brass-500/40 hover:text-brass-300"
+                  onClick={() => set('contents', `${(v('contents') ?? '').trim()} #${t}`.trim())}
+                >#{t}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <p className="-mt-1 text-mini leading-relaxed text-ink-500">
+          For everything you are never going to itemise. Tag it and the photo of this cupboard
+          turns up when you search the tag. Plain words work too — the whole note is searchable.
+        </p>
 
         <Field label="Notes"><textarea rows={2} value={v('notes') ?? ''} onChange={e => set('notes', e.target.value)} /></Field>
 

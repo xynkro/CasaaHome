@@ -12,7 +12,7 @@
     "notify:dry": "DRY_RUN=true tsx scripts/notify.ts",
     "typecheck": "tsc -b --noEmit",
     "rules:deploy": "firebase deploy --only firestore:rules,storage --project casaahome",
-    "test": "tsx scripts/logic.test.ts && tsx scripts/rooms.test.ts",
+    "test": "tsx scripts/logic.test.ts && tsx scripts/rooms.test.ts && tsx scripts/tags.test.ts",
     "emu": "firebase emulators:start --project casaahome",
     "dev:emu": "VITE_USE_EMULATOR=true vite",
     "build:hosting": "DEPLOY_BASE=/ tsc -b && DEPLOY_BASE=/ vite build",

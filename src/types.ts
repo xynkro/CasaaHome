@@ -58,6 +58,16 @@ export interface StorageLocation {
    * rather than a flat list, so the capture sweep knows what is still missing.
    */
   shots?: { closed?: string | null; open?: string | null }
+  /**
+   * What is roughly in here, in your own words.
+   *
+   * Most of a home is never worth itemising — nobody is going to create a
+   * record per screwdriver. For those places the photo is the inventory, and
+   * this is what makes the photo findable: a handful of words typed once
+   * ("drill, extension leads, batteries, gaffer tape") puts the cupboard in
+   * search results without forty item records behind it.
+   */
+  contents?: string
   notes?: string
   /** Long-term storage: things here get "use me before you forget" nudges. */
   longTerm?: boolean
