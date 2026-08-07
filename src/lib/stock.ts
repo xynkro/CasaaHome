@@ -68,12 +68,20 @@ export const STATUS_ORDER: Record<StockStatus, number> = {
   out: 0, expired: 1, expiring: 2, low: 3, ok: 4,
 }
 
+/**
+ * The marking pigments — earth and glaze, not signal colours. Nothing in this
+ * app glows.
+ *
+ * `hex` is read by the Telegram notifier and by the 3D markers, so it must
+ * agree with `cls`: the UI and the model should never disagree about what
+ * "low" looks like.
+ */
 export const STATUS_META: Record<StockStatus, { label: string; cls: string; dot: string; hex: string }> = {
-  out:      { label: 'Out',      cls: 'text-rose-300 bg-rose-500/12 border-rose-500/30',      dot: 'bg-rose-400',   hex: '#fb7185' },
-  expired:  { label: 'Expired',  cls: 'text-rose-300 bg-rose-500/12 border-rose-500/30',      dot: 'bg-rose-400',   hex: '#fb7185' },
-  expiring: { label: 'Expiring', cls: 'text-orange-300 bg-orange-500/12 border-orange-500/30', dot: 'bg-orange-400', hex: '#fb923c' },
-  low:      { label: 'Low',      cls: 'text-amber-300 bg-amber-500/12 border-amber-500/30',   dot: 'bg-amber-400',  hex: '#fbbf24' },
-  ok:       { label: 'OK',       cls: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/25', dot: 'bg-emerald-400', hex: '#34d399' },
+  out:      { label: 'Out',      cls: 'text-mark-red bg-mark-red/8 border-mark-red/30',       dot: 'bg-mark-red',   hex: '#9B2C3A' },
+  expired:  { label: 'Expired',  cls: 'text-mark-red bg-mark-red/8 border-mark-red/30',       dot: 'bg-mark-red',   hex: '#9B2C3A' },
+  expiring: { label: 'Expiring', cls: 'text-mark-rust bg-mark-rust/8 border-mark-rust/30',    dot: 'bg-mark-rust',  hex: '#96430F' },
+  low:      { label: 'Low',      cls: 'text-mark-ochre bg-mark-ochre/8 border-mark-ochre/30', dot: 'bg-mark-ochre', hex: '#8A5510' },
+  ok:       { label: 'OK',       cls: 'text-ink-500 bg-ink-800 border-ink-600',               dot: 'bg-mark-leaf',  hex: '#1C6B45' },
 }
 
 /** How many to buy to get back to par. */

@@ -16,7 +16,7 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
   return (
     <label className="block">
       <div className="mb-1 flex items-baseline justify-between gap-2">
-        <span className="text-mini font-semibold uppercase tracking-wider text-ink-400">{label}</span>
+        <span className="text-mini font-medium text-ink-400">{label}</span>
         {hint && <span className="text-micro text-ink-500">{hint}</span>}
       </div>
       {children}
@@ -75,7 +75,10 @@ export function Sheet({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-      <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={onClose} />
+      {/* This scrim fires every time anyone corrects a count — the app's primary
+          interaction — so 65% black over a pale app was a blackout many times
+          a day. */}
+      <div className="absolute inset-0 bg-ink-200/40 backdrop-blur-sm" onClick={onClose} />
       <div
         ref={ref}
         className={`sheet-up relative flex w-full flex-col border border-ink-700 bg-ink-850 shadow-2xl
@@ -125,18 +128,20 @@ export function Stat({ value, label, tone = 'default', onClick }: {
 }) {
   const tones = {
     default: 'text-ink-200',
-    warn: 'text-amber-300',
-    bad: 'text-rose-300',
-    good: 'text-emerald-300',
+    warn: 'text-mark-ochre',
+    bad: 'text-mark-red',
+    good: 'text-mark-leaf',
   }
   return (
     <button
       onClick={onClick}
       disabled={!onClick}
-      className="panel flex flex-col items-start gap-0.5 px-3 py-2.5 text-left transition enabled:hover:border-ink-500 disabled:cursor-default"
+      // Four small bordered cards in a row is the literal shape of a SaaS KPI
+      // strip. One ruled panel, cells divided by a seam.
+      className="flex flex-1 flex-col items-start gap-0.5 border-l border-ink-700 px-3 py-2.5 text-left first:border-l-0 disabled:cursor-default"
     >
       <div className={`tnum text-xl font-semibold leading-none ${tones[tone]}`}>{value}</div>
-      <div className="text-micro font-medium uppercase tracking-wider text-ink-400">{label}</div>
+      <div className="text-micro font-medium text-ink-400">{label}</div>
     </button>
   )
 }
@@ -156,7 +161,7 @@ export function QtyStepper({
         <input
           type="number"
           inputMode="decimal"
-          className="tnum h-full text-center text-lg font-semibold"
+          className="tnum h-full text-center text-[22px] font-semibold"
           value={Number.isFinite(value) ? value : 0}
           onChange={e => onChange(Math.max(0, Number(e.target.value)))}
         />

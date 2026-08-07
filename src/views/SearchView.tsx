@@ -206,8 +206,10 @@ export default function SearchView({ onOpenItem }: { onOpenItem: (id: string) =>
           />
         </div>
       ) : (
-        <div className="panel mt-2 overflow-hidden">
-          {results.slice(0, 200).map(h => h.kind === 'item' ? (
+        <div className="mt-2 space-y-2">
+          {/* Item hits share one tile; each cupboard is its own plate. */}
+          <div className="panel overflow-hidden">
+          {results.slice(0, 200).filter(h => h.kind === 'item').map(h => (
             <ItemRow
               key={`i${h.id}`}
               item={itemById.get(h.id)!}
@@ -216,11 +218,15 @@ export default function SearchView({ onOpenItem }: { onOpenItem: (id: string) =>
               plan={plan}
               onOpen={onOpenItem}
             />
-          ) : (
+          ))}
+          </div>
+
+          {results.slice(0, 200).filter(h => h.kind === 'place').map(h => (
             <PlaceResult key={`p${h.id}`} loc={locMap.get(h.id)!} where={h.where} onOpen={setOpenPlace} />
           ))}
+
           {results.length > 200 && (
-            <div className="border-t border-ink-700 px-3 py-2 text-center text-mini text-ink-400">
+            <div className="panel px-3 py-2 text-center text-mini text-ink-400">
               Showing first 200 — narrow the search
             </div>
           )}
@@ -233,31 +239,40 @@ export default function SearchView({ onOpenItem }: { onOpenItem: (id: string) =>
   )
 }
 
-/** A cupboard in the results, led by its open shot — the photo is the answer. */
+/**
+ * The open-cupboard plate.
+ *
+ * "Where are the wine glasses?" is the question this app exists to answer, and
+ * the answer is a photograph of the inside of a cupboard. So the photograph is
+ * the result — full width, uncropped by a thumbnail, with nothing laid over
+ * it. The caption sits in an opaque foot BELOW the image rather than in a
+ * gradient scrim on top: the text measures 13.7:1 that way and the photo keeps
+ * its full strength, where a scrim would compromise both.
+ */
 function PlaceResult({ loc, where, onOpen }: {
   loc: StorageLocation; where: string; onOpen: (id: string) => void
 }) {
-  const thumb = loc.shots?.open ?? loc.shots?.closed ?? loc.photoUrls?.[0]
+  const shot = loc.shots?.open ?? loc.shots?.closed ?? loc.photoUrls?.[0]
+  const tags = parseTags(loc.contents)
   return (
     <button
       onClick={() => onOpen(loc.id)}
-      className="flex w-full items-center gap-3 border-b border-ink-700/60 px-3 py-2.5 text-left transition last:border-0 hover:bg-ink-800/60"
+      className="block w-full overflow-hidden rounded-[14px] border border-ink-700 bg-ink-800 text-left"
     >
-      {thumb
-        ? <img src={thumb} alt="" loading="lazy" className="size-11 shrink-0 rounded-lg object-cover" />
-        : <div className="grid size-11 shrink-0 place-items-center rounded-lg bg-ink-700/60 text-ink-400">▤</div>}
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1.5">
-          <span className="truncate text-sm font-medium text-ink-200">{loc.name}</span>
-          <span className="chip shrink-0 border-ink-600 bg-ink-800 text-ink-400">cupboard</span>
-        </span>
-        <span className="mt-0.5 block truncate text-mini text-ink-400">
-          {parseTags(loc.contents).length
-            ? parseTags(loc.contents).map(t => `#${t}`).join(' ')
-            : (loc.contents || where)}
-        </span>
-      </span>
-      <span className="shrink-0 text-ink-500">→</span>
+      {shot ? (
+        <img src={shot} alt="" loading="lazy" className="aspect-[3/2] w-full object-cover" />
+      ) : (
+        // A deliberate blank, not a broken image.
+        <div className="grid aspect-[3/2] w-full place-items-center bg-ink-900 text-3xl font-semibold text-ink-500">
+          {loc.name.slice(0, 1).toUpperCase()}
+        </div>
+      )}
+      <div className="px-3 py-2.5">
+        <div className="truncate text-[17px] font-medium text-ink-200">{loc.name}</div>
+        <div className="mt-0.5 truncate text-mini text-ink-400">
+          {tags.length ? tags.map(t => `#${t}`).join('  ') : (loc.contents || where)}
+        </div>
+      </div>
     </button>
   )
 }

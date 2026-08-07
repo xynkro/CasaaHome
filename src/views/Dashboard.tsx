@@ -71,7 +71,7 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
     <div className="mx-auto max-w-2xl px-4 py-6">
       <Header greeting={greeting} name={who} house={settings.householdName} />
 
-      <div className="mt-4 grid grid-cols-4 gap-2">
+      <div className="panel mt-4 flex overflow-hidden">
         <Stat value={byStatus.out.length + byStatus.expired.length} label="Out" tone={byStatus.out.length ? 'bad' : 'default'} />
         <Stat value={byStatus.low.length} label="Low" tone={byStatus.low.length ? 'warn' : 'default'} />
         <Stat value={byStatus.expiring.length} label="Expiring" tone={byStatus.expiring.length ? 'warn' : 'default'} />
@@ -175,8 +175,10 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
 function Header({ greeting, name, house }: { greeting: string; name: string; house: string }) {
   return (
     <header className="rise">
-      <div className="text-mini font-medium uppercase tracking-[0.14em] text-brass-400">{house || 'Home'}</div>
-      <h1 className="mt-0.5 text-2xl font-semibold tracking-tight text-ink-200">
+      {/* The uppercase letterspaced eyebrow was the single most terminal-looking
+          object on the dashboard. Sentence case, same accent. */}
+      <div className="text-mini font-medium text-brass-400">{house || 'Home'}</div>
+      <h1 className="mt-0.5 text-[28px] font-semibold tracking-[-0.011em] text-ink-200">
         {greeting}{name ? `, ${name}` : ''}
       </h1>
     </header>

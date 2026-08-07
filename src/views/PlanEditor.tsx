@@ -514,7 +514,7 @@ export default function PlanEditor() {
                       />
                       {on && r.polygon.map((p, i) => (
                         <circle key={i} cx={sx(toPx(p.x))} cy={sx(toPx(p.z))} r={8}
-                          fill="#F2BE6B" stroke="#0B0D0F" strokeWidth={2}
+                          fill="var(--color-brass-300)" stroke="#0B0D0F" strokeWidth={2}
                           style={{ cursor: 'grab' }}
                           onPointerDown={e => {
                             e.stopPropagation()
@@ -544,7 +544,7 @@ export default function PlanEditor() {
                         }} />
                       {on && ([['a', a], ['b', b]] as ['a' | 'b', P][]).map(([end, pt]) => (
                         <circle key={end} cx={sx(pt[0])} cy={sx(pt[1])} r={9}
-                          fill="#F2BE6B" stroke="#0B0D0F" strokeWidth={2}
+                          fill="var(--color-brass-300)" stroke="#0B0D0F" strokeWidth={2}
                           style={{ cursor: 'grab' }}
                           onPointerDown={e => {
                             e.stopPropagation()
@@ -565,7 +565,7 @@ export default function PlanEditor() {
                     <line x1={sx(previewFrom[0])} y1={sx(previewFrom[1])} x2={sx(cursor[0])} y2={sx(cursor[1])}
                       stroke="#E8A33D" strokeWidth={2.5} strokeDasharray="6 4" />
                     <text x={sx((previewFrom[0] + cursor[0]) / 2) + 8} y={sx((previewFrom[1] + cursor[1]) / 2) - 6}
-                      fontSize={12} fill="#F2BE6B" className="tnum">
+                      fontSize={12} fill="var(--color-brass-300)" className="tnum">
                       {lengthM(previewFrom, cursor).toFixed(2)} m
                     </text>
                   </>
@@ -574,7 +574,7 @@ export default function PlanEditor() {
                   <>
                     <rect x={sx(rectPreview.x)} y={sx(rectPreview.y)} width={sx(rectPreview.w)} height={sx(rectPreview.h)}
                       fill="#E8A33D" fillOpacity={0.08} stroke="#E8A33D" strokeWidth={2.5} strokeDasharray="6 4" />
-                    <text x={sx(rectPreview.x) + 6} y={sx(rectPreview.y) - 6} fontSize={12} fill="#F2BE6B" className="tnum">
+                    <text x={sx(rectPreview.x) + 6} y={sx(rectPreview.y) - 6} fontSize={12} fill="var(--color-brass-300)" className="tnum">
                       {(rectPreview.w * (mpp ?? 0)).toFixed(2)} × {(rectPreview.h * (mpp ?? 0)).toFixed(2)} m
                     </text>
                   </>

@@ -1,38 +1,91 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink-950: #08090B;
-  --color-ink-900: #0B0D0F;
-  --color-ink-850: #101317;
-  --color-ink-800: #14181C;
-  --color-ink-700: #1C2126;
-  --color-ink-600: #2A3138;
-  /* ink-500 and ink-400 carry most of the small print in this app. At their
-     original values they measured 1.9:1 and 4.1:1 on the page background —
-     under the 4.5:1 floor, at ten pixels, read while standing in front of a
-     cupboard. Lifted to 4.8:1 and 5.5:1; the hierarchy between the four greys
-     survives because the steps stayed proportional. */
-  --color-ink-500: #74808B;
-  --color-ink-400: #808C96;
-  --color-ink-300: #9AA5AE;
-  --color-ink-200: #C6CED4;
+  /* ---------------------------------------------------------------------
+     LIGHT FLIP — read before changing a value.
 
-  --color-brass-300: #F2BE6B;
-  --color-brass-400: #E8A33D;
-  --color-brass-500: #D18F2C;
+     Every token NAME keeps the job it had, so nothing that says bg-ink-900,
+     bg-ink-800, border-ink-700 or text-ink-200 needs touching. Only the
+     luminance direction reversed:
 
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+       ink-950 .. ink-600   SURFACES AND RULES   (lightest -> mid)
+       ink-500 .. ink-200   TEXT                 (mid -> darkest)
 
-  /* Two sizes below `text-sm`, not eight. The app had accumulated 0.6, 0.62,
-     0.65, 0.66, 0.68, 0.7 and 0.72rem — nobody can tell 10.4px from 10.88px,
-     so the variety bought nothing and cost a coherent scale. 12px is the
-     floor; nothing in the UI goes smaller. */
+     The pivot still sits between 600 and 500, exactly where it sat in the
+     dark scheme. This is deliberate and is not to be "sorted" back.
+
+     An opaque plane (ink-800) sits one step LIGHTER than the field it lies
+     on (ink-900), separated by a 1px seam (ink-700) — the reverse of
+     white-card-floating-on-grey, and the reason there are no shadows.
+
+     The ground is #E9EDEA, cool grey-green: plaster in shade. It is NOT
+     cream and must not drift toward it. The payload is warm indoor iPhone
+     photographs of cupboard interiors; a warm ground absorbs their warmth
+     and leaves them looking yellowed, where a cool one reads the same photo
+     as lamplight.
+     --------------------------------------------------------------------- */
+  --color-ink-950: #FDFEFD;   /* top plane; the .btn-primary label */
+  --color-ink-900: #E9EDEA;   /* PAGE GROUND — plaster */
+  --color-ink-850: #FBFCFB;   /* input wells, sheet bodies */
+  --color-ink-800: #F3F6F4;   /* PANELS, btn-ghost, row hover */
+  --color-ink-700: #CFD8D2;   /* SEAM — hairlines. A grout line, never a keyline. */
+  --color-ink-600: #7A867E;   /* input and chip borders — 3.21:1 on ground */
+
+  /* Small print carries this app and it is read in a pantry. Measured on the
+     ground, not guessed:
+       ink-500 5.09:1 · ink-400 6.15:1 · ink-300 9.18:1 · ink-200 13.68:1 */
+  --color-ink-500: #59665F;   /* meta: "par 3", timestamps, placeholders */
+  --color-ink-400: #4B5A54;   /* secondary body: locations, hints, tags */
+  --color-ink-300: #33403A;   /* section headings */
+  --color-ink-200: #18231F;   /* PRIMARY TEXT */
+
+  /* GLAZE. The brass names survive so 30-odd existing call sites land
+     correctly; the value is now deep jade — the one saturated colour in a
+     flat of white laminate, steel and grey tile. Brass could not clear
+     4.5:1 on a light ground at any usable saturation, and darkened enough
+     to try it goes muddy ochre, which is terracotta's neighbour.
+
+     The ramp inverts with the greys: on a light ground more emphasis means
+     darker, so 300 is now the DARKEST and 500 the lightest. */
+  --color-brass-300: #08544A;  /* press, and text on a jade wash — 7.47:1 */
+  --color-brass-400: #0B6B5E;  /* THE ACCENT — 5.42:1 on ground */
+  --color-brass-500: #248C7C;  /* focus ring, input focus — 3.47:1 */
+
+  /* MARKING PIGMENTS — the status hues, consumed by STATUS_META in
+     src/lib/stock.ts. Earth and glaze rather than signal colours; nothing
+     in this app glows. On the ground: 6.31 / 5.72 / 5.24 / 5.49:1. */
+  --color-mark-red:   #9B2C3A;  /* out, expired */
+  --color-mark-rust:  #96430F;  /* expiring */
+  --color-mark-ochre: #8A5510;  /* low */
+  --color-mark-leaf:  #1C6B45;  /* ok, restocks, positive deltas */
+
+  /* Tailwind's own scales are lit for a black ground and go pastel on
+     plaster. Retinting them here flips every stray inline usage across ten
+     files with zero component edits. */
+  --color-rose-300: #9B2C3A;    --color-rose-400: #B8434B;   --color-rose-500: #C4525A;
+  --color-amber-300: #8A5510;   --color-amber-400: #C08A22;  --color-amber-500: #CE9A2E;
+  --color-amber-700: #6B4109;
+  --color-emerald-300: #1C6B45; --color-emerald-400: #2A7D54; --color-emerald-500: #359062;
+
+  /* One family, no webfonts — nothing that can fail to load in a pantry.
+     ui-rounded resolves to SF Pro Rounded on iOS, the face Apple's own Home
+     app uses, so it reads domestic rather than administrative. The terminal
+     register lived in three places: the black ground, the uppercase
+     letterspaced labels, and the figures. Fixing two of three leaves the job
+     half done. No serif token: a display serif on a pale ground is the
+     loudest tell of the cream-and-terracotta default, and there is no serif
+     in a kitchen. */
+  --font-sans: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Still a 12px floor. --text-mini moves 13px -> 14px: the secondary line
+     under every item name is the most-read small text in the app, and 13px
+     was set for a dense terminal, not for arm's length in bad light. */
   --text-micro: 0.75rem;      /* 12px — labels, meta, chips */
-  --text-mini: 0.8125rem;     /* 13px — secondary body */
+  --text-mini: 0.875rem;      /* 14px — secondary body */
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   --safe-t: env(safe-area-inset-top, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-l: env(safe-area-inset-left, 0px);
@@ -62,9 +115,11 @@ html, body, #root { height: 100%; }
 
 body {
   margin: 0;
+  /* One very wide, very faint daylight wash from the top-left. No texture,
+     no noise, no grain — fake material next to a real photograph of a real
+     cupboard makes the photograph look fake too. */
   background:
-    radial-gradient(1100px 700px at 12% -12%, #1a1410 0%, transparent 60%),
-    radial-gradient(900px 600px at 92% 8%, #101820 0%, transparent 55%),
+    radial-gradient(1400px 900px at 8% -20%, #FFFFFF 0%, transparent 62%),
     var(--color-ink-900);
   color: var(--color-ink-200);
   font-family: var(--font-sans);
@@ -76,7 +131,9 @@ body {
 .tnum { font-variant-numeric: tabular-nums; }
 
 .panel {
-  background: color-mix(in oklab, var(--color-ink-800) 88%, transparent);
+  /* An opaque plane, never a translucent one, and never a shadow: the panel
+     is a surface lying on a surface, distinguished by a seam. */
+  background: var(--color-ink-800);
   border: 1px solid var(--color-ink-700);
   border-radius: 1rem;
 }
@@ -118,16 +175,21 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 }
 .btn:active { transform: translateY(1px); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
-.btn-primary { background: var(--color-brass-400); color: #1a1206; }
+.btn-primary { background: var(--color-brass-400); color: var(--color-ink-950); }
 .btn-primary:hover:not(:disabled) { background: var(--color-brass-300); }
 .btn-ghost { background: var(--color-ink-800); border-color: var(--color-ink-600); color: var(--color-ink-200); }
 .btn-ghost:hover:not(:disabled) { background: var(--color-ink-700); }
-.btn-danger { background: color-mix(in oklab, #f43f5e 16%, transparent); border-color: color-mix(in oklab, #f43f5e 40%, transparent); color: #fda4af; }
+/* Was tuned for a dark ground; on plaster the pink wash is illegible. */
+.btn-danger {
+  background: color-mix(in oklab, var(--color-mark-red) 10%, transparent);
+  border-color: color-mix(in oklab, var(--color-mark-red) 30%, transparent);
+  color: var(--color-mark-red);
+}
 
 .chip {
   display: inline-flex; align-items: center; gap: .3rem;
   border-radius: 999px; padding: .12rem .5rem;
-  font-size: .68rem; font-weight: 600; letter-spacing: .02em;
+  font-size: var(--text-micro); font-weight: 600; letter-spacing: .01em;
   border: 1px solid;
 }
 
