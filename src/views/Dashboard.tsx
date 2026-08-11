@@ -44,6 +44,14 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
 
   const stale = useMemo(() => live.filter(i => isStale(i, settings)), [live, settings])
 
+  // A room with a photo is worth a tile; one without is worth a chip.
+  const shotRooms = useMemo(() => plan.rooms.filter(r => r.photoUrl), [plan.rooms])
+  const bareRooms = useMemo(() => plan.rooms.filter(r => !r.photoUrl), [plan.rooms])
+  const cupboardCount = (roomId: string) => {
+    const n = locations.filter(l => l.roomId === roomId).length
+    return n ? `${n} ${n === 1 ? 'cupboard' : 'cupboards'}` : 'nothing catalogued'
+  }
+
   const greeting = useMemo(() => {
     const h = new Date().getHours()
     if (h < 5) return 'Late night'
@@ -167,42 +175,53 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
               No rooms yet. Add them on the Places tab.
             </div>
           ) : (
-            /* Two columns at every width. A responsive third column looks
-               tidier on a laptop and then leaves ragged holes on a phone,
-               which is where this actually gets used. */
-            <div className="grid grid-cols-2 gap-px bg-ink-700/60">
-              {plan.rooms.map(r => {
-                const n = locations.filter(l => l.roomId === r.id).length
-                return (
-                  <button
-                    key={r.id}
-                    onClick={() => setOpenRoom(r.id)}
-                    className="bg-ink-800 text-left transition active:bg-ink-850"
-                  >
-                    {r.photoUrl ? (
-                      <img src={r.photoUrl} alt="" loading="lazy" className="aspect-[4/3] w-full object-cover" />
-                    ) : (
-                      // An un-photographed room should recede, not shout. The
-                      // ground colour puts it a step BEHIND the photographed
-                      // ones instead of a bright white block that pulls the eye
-                      // to whatever you have not done yet.
-                      <div className="grid aspect-[4/3] w-full place-items-center gap-1 bg-ink-900">
-                        <Lens />
+            <>
+              {/* Only photographed rooms get a tile. Giving all fourteen a 4:3
+                  cell meant scrolling past about 1,600pt of identical empty
+                  placeholders to reach the bottom of the home screen — the
+                  rooms you have not done yet were taking up more room than the
+                  ones you had. The rest go in a chip row below, which is both
+                  smaller and more useful: it reads as a list of what is left. */}
+              {shotRooms.length > 0 && (
+                <div className="grid grid-cols-2 gap-px bg-ink-700/60">
+                  {shotRooms.map(r => (
+                    <button
+                      key={r.id}
+                      onClick={() => setOpenRoom(r.id)}
+                      className="bg-ink-800 text-left transition active:bg-ink-850"
+                    >
+                      <img src={r.photoUrl!} alt="" loading="lazy" className="aspect-[4/3] w-full object-cover" />
+                      <div className="px-2.5 py-2">
+                        <div className="truncate text-mini font-medium text-ink-200">{r.name}</div>
+                        <div className="truncate text-micro text-ink-500">{cupboardCount(r.id)}</div>
                       </div>
-                    )}
-                    <div className="px-2.5 py-2">
-                      <div className="truncate text-mini font-medium text-ink-200">{r.name}</div>
-                      <div className="truncate text-micro text-ink-500">
-                        {n ? `${n} ${n === 1 ? 'cupboard' : 'cupboards'}` : 'no photo yet'}
-                      </div>
-                    </div>
-                  </button>
-                )
-              })}
-              {/* An odd number of rooms would otherwise leave the seam colour
-                  showing through the last cell, which reads as a broken tile. */}
-              {plan.rooms.length % 2 === 1 && <div className="bg-ink-800" />}
-            </div>
+                    </button>
+                  ))}
+                  {/* An odd count would otherwise leave the seam colour showing
+                      through the last cell, which reads as a broken tile. */}
+                  {shotRooms.length % 2 === 1 && <div className="bg-ink-800" />}
+                </div>
+              )}
+
+              {bareRooms.length > 0 && (
+                <div className="border-t border-ink-700 px-3 py-2.5">
+                  <div className="text-micro font-semibold uppercase tracking-wider text-ink-500">
+                    {shotRooms.length ? 'Not photographed yet' : 'Tap a room to photograph it'}
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {bareRooms.map(r => (
+                      <button
+                        key={r.id}
+                        onClick={() => setOpenRoom(r.id)}
+                        className="chip border-ink-600 bg-ink-800 text-ink-300"
+                      >
+                        {r.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </SectionCard>
 
@@ -238,17 +257,6 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
       <SnapPlace open={snapping} onClose={() => setSnapping(false)} />
       <RoomBoard roomId={openRoom} onClose={() => setOpenRoom(null)} onOpenItem={onOpenItem} />
     </div>
-  )
-}
-
-/** The empty-room mark: a lens, drawn to match the tab bar's stroke weight. */
-function Lens() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6 text-ink-500"
-      fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3.5 8.5h3.2l1.4-2h7.8l1.4 2h3.2v9.5H3.5z" />
-      <circle cx="12" cy="12.8" r="3.1" />
-    </svg>
   )
 }
 
