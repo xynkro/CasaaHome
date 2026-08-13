@@ -8,6 +8,7 @@ import LocationsView from './views/LocationsView'
 import ShoppingView from './views/ShoppingView'
 import SettingsView from './views/SettingsView'
 import ItemSheet from './views/ItemSheet'
+import SnapPlace from './views/SnapPlace'
 import { Empty } from './ui/primitives'
 
 /**
@@ -33,14 +34,42 @@ const PATHS = {
   search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14ZM16.2 16.2 21 21',
   places: 'M4 4.5h16v5H4zM4 14.5h16v5H4zM8 7h.01M8 17h.01',
   shop:   'M3 5h2.2l2.1 10.3a1.5 1.5 0 0 0 1.5 1.2h8.4a1.5 1.5 0 0 0 1.5-1.2L20.5 8H6.2M9.5 20.2h.01M17 20.2h.01',
+  camera: 'M3 8.6h3.3l1.5-2.1h8.4l1.5 2.1H21v10.9H3zM12 17.6a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z',
 }
 
-const TABS = [
+// Split so the shutter sits in the middle of the bar. Photographing a cupboard
+// is the whole point of the app and it was reachable only through a text link
+// in a section heading — Caspar looked for it and could not find it. The middle
+// of the bar is the one place on a phone your thumb already is.
+const LEFT_TABS = [
   { to: '/', label: 'Home', d: PATHS.home },
   { to: '/search', label: 'Search', d: PATHS.search },
+]
+const RIGHT_TABS = [
   { to: '/places', label: 'Places', d: PATHS.places },
   { to: '/shop', label: 'Shop', d: PATHS.shop },
 ]
+
+function Tab({ to, label, d }: { to: string; label: string; d: string }) {
+  return (
+    <NavLink
+      to={to}
+      end={to === '/'}
+      className={({ isActive }) =>
+        `flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-micro font-medium transition ${
+          isActive ? 'text-brass-400' : 'text-ink-400 hover:text-ink-300'
+        }`
+      }
+    >
+      {({ isActive }) => (
+        <>
+          <Icon d={d} filled={false} />
+          <span className={isActive ? 'font-semibold' : undefined}>{label}</span>
+        </>
+      )}
+    </NavLink>
+  )
+}
 
 export default function App() {
   // Zustand v5 has no automatic shallow-compare: object selectors would
@@ -53,6 +82,7 @@ export default function App() {
   const error = useStore(s => s.error)
   const location = useLocation()
   const [openItem, setOpenItem] = useState<string | null>(null)
+  const [snapping, setSnapping] = useState(false)
   const [storageBlocked, setStorageBlocked] = useState(false)
 
   useEffect(() => subscribe(), [subscribe])
@@ -140,30 +170,26 @@ export default function App() {
         className="fixed inset-x-0 bottom-0 z-40 border-t border-ink-700 bg-ink-900/92 backdrop-blur-lg"
         style={{ paddingBottom: 'var(--safe-b)' }}
       >
-        <div className="mx-auto flex max-w-2xl">
-          {TABS.map(t => (
-            <NavLink
-              key={t.to}
-              to={t.to}
-              end={t.to === '/'}
-              className={({ isActive }) =>
-                `flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-micro font-medium transition ${
-                  isActive ? 'text-brass-400' : 'text-ink-400 hover:text-ink-300'
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <Icon d={t.d} filled={false} />
-                  <span className={isActive ? 'font-semibold' : undefined}>{t.label}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
+        <div className="mx-auto flex max-w-2xl items-center">
+          {LEFT_TABS.map(t => <Tab key={t.to} {...t} />)}
+
+          <button
+            onClick={() => setSnapping(true)}
+            aria-label="Photograph a cupboard"
+            className="flex min-h-11 w-[4.5rem] shrink-0 flex-col items-center justify-center gap-0.5 py-1.5"
+          >
+            <span className="grid size-12 -translate-y-3 place-items-center rounded-full bg-brass-400 text-ink-950 shadow-[0_4px_14px_rgba(11,107,94,0.4)] transition active:scale-95">
+              <Icon d={PATHS.camera} filled={false} />
+            </span>
+            <span className="-mt-2.5 text-micro font-semibold text-brass-400">Snap</span>
+          </button>
+
+          {RIGHT_TABS.map(t => <Tab key={t.to} {...t} />)}
         </div>
       </nav>
 
       <ItemSheet itemId={openItem} onClose={() => setOpenItem(null)} />
+      <SnapPlace open={snapping} onClose={() => setSnapping(false)} />
     </div>
   )
 }
