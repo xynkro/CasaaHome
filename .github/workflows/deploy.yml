@@ -1,4 +1,17 @@
-name: Deploy PWA to GitHub Pages
+name: Deploy
+
+# Firebase Hosting is the one real site: https://casaahome.web.app
+#
+# There used to be two. GitHub Pages deployed on every push and Firebase
+# Hosting only ever moved when somebody ran `npm run deploy:hosting` by hand,
+# which nobody did for a fortnight — so the two URLs served different apps and
+# the nicer-looking one was the stale one. Now Pages serves a redirect and
+# Hosting is deployed here, so there is exactly one place the app can be.
+#
+# Hosting is the survivor rather than Pages because it is same-origin with
+# Firebase Auth, it serves from / instead of a subpath, and it lets us set
+# Cache-Control — sw.js MUST be no-cache or an installed PWA can pin itself to
+# an old build forever, which is not something Pages can express at all.
 
 on:
   push:
@@ -10,13 +23,13 @@ permissions:
   pages: write
   id-token: write
 
-# One deploy at a time; never cancel a running one mid-upload.
 concurrency:
-  group: pages
+  group: deploy
   cancel-in-progress: false
 
 jobs:
-  build:
+  hosting:
+    name: Firebase Hosting (canonical)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,20 +38,36 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm test
       - run: npm run build
         env:
-          DEPLOY_BASE: /${{ github.event.repository.name }}/
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
+          DEPLOY_BASE: /
+      - name: Deploy
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          npx firebase-tools@13 deploy --only hosting --project casaahome --non-interactive
+          rm -f "$RUNNER_TEMP/sa.json"
 
-  deploy:
-    needs: build
+  pages-redirect:
+    name: GitHub Pages (redirect to the canonical site)
+    needs: hosting
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/checkout@v4
+      - name: Build the signpost
+        run: |
+          mkdir -p redirect
+          cp .github/pages-redirect.html redirect/index.html
+          cp .github/pages-redirect.html redirect/404.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: redirect
       - id: deployment
         uses: actions/deploy-pages@v4

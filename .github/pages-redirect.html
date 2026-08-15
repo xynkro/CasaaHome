@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>CasaaHome has moved</title>
+<style>
+  :root { color-scheme: light; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: grid; place-items: center; padding: 1.5rem;
+    background: #E9EDEA; color: #18231F;
+    font: 400 16px/1.55 ui-rounded, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    text-align: center;
+  }
+  .card { max-width: 22rem; }
+  h1 { margin: 0 0 .5rem; font-size: 1.25rem; font-weight: 600; letter-spacing: -0.011em; }
+  p { margin: 0 0 1.25rem; font-size: .875rem; color: #4B5A54; }
+  a.go {
+    display: block; padding: .85rem 1.25rem; border-radius: .75rem;
+    background: #0B6B5E; color: #FDFEFD; text-decoration: none; font-weight: 600;
+  }
+  small { display: block; margin-top: 1rem; font-size: .75rem; color: #6B7A73; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>CasaaHome moved</h1>
+    <p>
+      This address served an old copy of the app. Everything now lives at
+      <strong>casaahome.web.app</strong> — open it there and add that one to
+      your home screen instead.
+    </p>
+    <a class="go" href="https://casaahome.web.app/">Open CasaaHome</a>
+    <small>Delete the old icon once the new one works.</small>
+  </div>
+<script>
+// The old origin almost certainly has a service worker holding a stale build in
+// cache. Left alone it would keep serving that build to anyone who still has
+// the icon installed, and they would never see this page. Tear it down first,
+// then move them across — the redirect is deliberately delayed a moment so the
+// unregister actually completes, and the link above works regardless.
+(async () => {
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations()
+      await Promise.all(regs.map(r => r.unregister()))
+    }
+    if (window.caches) {
+      const keys = await caches.keys()
+      await Promise.all(keys.map(k => caches.delete(k)))
+    }
+  } catch (e) {
+    // Storage blocked, private window, whatever — the visible link still works.
+  }
+  location.replace('https://casaahome.web.app/')
+})()
+</script>
+</body>
+</html>

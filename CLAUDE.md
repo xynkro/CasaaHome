@@ -5,7 +5,15 @@ Home inventory PWA. Read this before changing anything.
 ## Shape
 
 - **App**: React 19 + Vite + Tailwind v4, hash-routed, PWA.
-  Deployed to GitHub Pages by `.github/workflows/deploy.yml`, base path `/CasaaHome/`.
+- **One URL: https://casaahome.web.app** — Firebase Hosting, served from `/`,
+  deployed by `.github/workflows/deploy.yml` on every push to main.
+  `xynkro.github.io/CasaaHome/` is now only a redirect page that also tears down
+  its own old service worker; do not deploy the app there again. There were two
+  live sites for a fortnight serving different builds, because Pages deployed
+  automatically and Hosting only moved when someone ran a command by hand.
+  Hosting won: same-origin with Firebase Auth, no subpath, and it can set
+  Cache-Control — **`sw.js` must stay `no-cache`** or an installed PWA can pin
+  itself to an old build forever. Pages cannot set headers at all.
 - **Data**: Firebase project `casaahome` (Firestore + Storage, `asia-southeast1`).
   The web config in `src/firebase.ts` is public by design; access control is
   entirely in `firestore.rules` / `storage.rules`.
@@ -112,6 +120,6 @@ blank white screen, which is the cache, not a bug in the app.
 npm run dev
 npm run typecheck
 npm run build
-npm run rules:deploy
+npm run rules:deploy      # CI deploys the app; this is only for rules
 FIREBASE_SERVICE_ACCOUNT="$(cat serviceAccount.json)" npm run notify:dry
 ```
