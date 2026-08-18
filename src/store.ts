@@ -13,6 +13,7 @@ import {
   type HousePlan, type Item, type Settings, type StockEvent, type StockEventType,
   type StorageLocation,
 } from './types'
+import { defined, newItemRecord, newLocationRecord } from './lib/records'
 import { estimateBurnPerDay } from './lib/stock'
 
 const nowIso = () => new Date().toISOString()
@@ -175,35 +176,10 @@ export const useStore = create<Store>((set, get) => ({
     const ts = nowIso()
     if (patch.id) {
       const { id, ...rest } = patch
-      await updateDoc(doc(db, 'items', id), { ...rest, updatedAt: ts })
+      await updateDoc(doc(db, 'items', id), { ...defined(rest), updatedAt: ts })
       return id
     }
-    const base: Omit<Item, 'id'> = {
-      name: patch.name ?? 'Untitled',
-      brand: patch.brand ?? '',
-      category: patch.category ?? 'Other',
-      tags: patch.tags ?? [],
-      locationId: patch.locationId ?? null,
-      qty: patch.qty ?? 1,
-      unit: patch.unit ?? 'pcs',
-      parLevel: patch.parLevel ?? Math.max(patch.qty ?? 1, 1),
-      minQty: patch.minQty ?? 1,
-      perishable: patch.perishable ?? false,
-      expiryDate: patch.expiryDate ?? null,
-      openedAt: patch.openedAt ?? null,
-      photoUrls: patch.photoUrls ?? [],
-      notes: patch.notes ?? '',
-      barcode: patch.barcode ?? null,
-      seasonal: patch.seasonal ?? false,
-      storeHint: patch.storeHint ?? null,
-      shopeeUrl: patch.shopeeUrl ?? null,
-      priceRefs: patch.priceRefs ?? [],
-      lastVerifiedAt: ts,
-      burnPerDay: null,
-      archived: false,
-      createdAt: ts,
-      updatedAt: ts,
-    }
+    const base = newItemRecord(patch, ts)
     const created = await addDoc(collection(db, 'items'), { ...base, history: [] })
     void logEvent(created.id, 'create', 0, base.qty, by)
     return created.id
@@ -257,21 +233,10 @@ export const useStore = create<Store>((set, get) => ({
     const ts = nowIso()
     if (patch.id) {
       const { id, ...rest } = patch
-      await updateDoc(doc(db, 'locations', id), { ...rest, updatedAt: ts })
+      await updateDoc(doc(db, 'locations', id), { ...defined(rest), updatedAt: ts })
       return id
     }
-    const created = await addDoc(collection(db, 'locations'), {
-      name: patch.name ?? 'New place',
-      kind: patch.kind ?? 'cabinet',
-      roomId: patch.roomId ?? null,
-      parentId: patch.parentId ?? null,
-      pos: patch.pos ?? null,
-      photoUrls: patch.photoUrls ?? [],
-      notes: patch.notes ?? '',
-      longTerm: patch.longTerm ?? false,
-      createdAt: ts,
-      updatedAt: ts,
-    })
+    const created = await addDoc(collection(db, 'locations'), newLocationRecord(patch, ts))
     return created.id
   },
 
@@ -288,15 +253,15 @@ export const useStore = create<Store>((set, get) => ({
   },
 
   savePlan: async patch => {
-    await setDoc(doc(db, 'house', 'plan'), { ...patch, updatedAt: nowIso() }, { merge: true })
+    await setDoc(doc(db, 'house', 'plan'), { ...defined(patch), updatedAt: nowIso() }, { merge: true })
   },
 
   saveSettings: async patch => {
-    await setDoc(doc(db, 'config', 'settings'), { ...patch, updatedAt: nowIso() }, { merge: true })
+    await setDoc(doc(db, 'config', 'settings'), { ...defined(patch), updatedAt: nowIso() }, { merge: true })
   },
 
   saveShopping: async patch => {
-    await setDoc(doc(db, 'shopping', 'state'), { ...patch, updatedAt: nowIso() }, { merge: true })
+    await setDoc(doc(db, 'shopping', 'state'), { ...defined(patch), updatedAt: nowIso() }, { merge: true })
   },
 }))
 

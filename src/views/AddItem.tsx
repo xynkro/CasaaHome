@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useStore, locationPath } from '../store'
 import { DEFAULT_CATEGORIES, UNITS, type Unit } from '../types'
 import { Field, Sheet } from '../ui/primitives'
+import { parseTags, tagCloud } from '../lib/tags'
 
 /**
  * Add an item, optionally already filed.
@@ -23,6 +24,7 @@ export default function AddItem({
   onOpenItem?: (id: string) => void
 }) {
   const locations = useStore(s => s.locations)
+  const items = useStore(s => s.items)
   const plan = useStore(s => s.plan)
   const saveItem = useStore(s => s.saveItem)
   const locMap = useMemo(() => new Map(locations.map(l => [l.id, l])), [locations])
@@ -34,21 +36,33 @@ export default function AddItem({
   const [category, setCategory] = useState('Pantry')
   const [busy, setBusy] = useState(false)
   const [added, setAdded] = useState<string[]>([])
+  const [tagText, setTagText] = useState('')
 
   const pinned = presetLocationId ?? null
 
   useEffect(() => {
     if (!open) return
-    setName(''); setQty(1); setAdded([])
+    setName(''); setQty(1); setAdded([]); setTagText('')
     setLocationId(pinned ?? '')
   }, [open, pinned])
 
   const where = pinned ? locationPath(pinned, locMap, plan) : null
 
+  const itemTags = parseTags(tagText)
+  const suggestions = useMemo(
+    () => tagCloud([...locations.map(l => l.contents), ...items.map(i => i.notes)])
+      .map(t => t.tag).filter(t => !itemTags.includes(t)).slice(0, 12),
+    [locations, items, itemTags],
+  )
+
   const submit = async (thenClose: boolean) => {
     if (!name.trim()) return
     setBusy(true)
     try {
+      // The raw line goes in notes and the parsed words go in tags, because
+      // search reads BOTH — i.tags for an exact "#wine" filter and
+      // parseTags(i.notes) for the fuzzy pass. Writing only one of them makes
+      // an item findable one way and invisible the other.
       const id = await saveItem({
         name: name.trim(),
         qty, unit,
@@ -56,9 +70,11 @@ export default function AddItem({
         category,
         parLevel: Math.max(qty, 1),
         minQty: 1,
+        notes: tagText.trim(),
+        tags: parseTags(tagText),
       })
       setAdded(a => [name.trim(), ...a])
-      setName(''); setQty(1)
+      setName(''); setQty(1); setTagText('')
       if (thenClose) { onClose(); onOpenItem?.(id) }
     } finally { setBusy(false) }
   }
@@ -112,6 +128,40 @@ export default function AddItem({
             </select>
           </Field>
         </div>
+
+        {/* Items had no tag field at all. Cupboards did, so "#rice" worked on
+            a shelf and silently did nothing on the thing sitting on it. */}
+        <Field label="Tag it" hint="optional, use #">
+          <input
+            type="text"
+            placeholder="#rice #staples"
+            value={tagText}
+            onChange={e => setTagText(e.target.value)}
+          />
+        </Field>
+
+        {itemTags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {itemTags.map(t => (
+              <span key={t} className="chip border-brass-500/40 bg-brass-400/12 text-brass-300">#{t}</span>
+            ))}
+          </div>
+        )}
+
+        {suggestions.length > 0 && (
+          <div>
+            <div className="mb-1 text-micro text-ink-500">Used elsewhere — tap to add</div>
+            <div className="flex flex-wrap gap-1">
+              {suggestions.map(t => (
+                <button
+                  key={t}
+                  className="chip border-ink-600 bg-ink-800 text-ink-400"
+                  onClick={() => setTagText(c => `${c.trim()} #${t}`.trim())}
+                >#{t}</button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {!pinned && (
           <Field label="Where">

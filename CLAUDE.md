@@ -68,6 +68,24 @@ the room cards on the dashboard are the way in.
 `Room.polygon` and the wall/plan fields still exist on the types so old
 documents parse, and nothing reads them.
 
+## Creating documents
+
+`src/lib/records.ts` builds every new item and location: **defaults first, then
+the caller's patch spread over the top**, with `undefined` stripped.
+
+It used to be an explicit whitelist inline in the store, which reads as careful
+and is a trap. `contents` and `shots` were added to `StorageLocation` for the
+camera-first flow and never reached Firestore, so every cupboard Caspar
+photographed saved with no photo and no tags — silently, looking exactly like a
+save button that did nothing. Adding a field to the type and the form must not
+require remembering a third place. `scripts/records.test.ts` guards this.
+
+`defined()` matters as much as the merge: **Firestore rejects a write whose
+value is `undefined`**, and an optional field the form left alone is exactly
+that, so one untouched field would throw the whole save. Every write path
+(`saveItem`, `saveLocation`, `savePlan`, `saveSettings`, `saveShopping`) runs
+its patch through it.
+
 ## Gotchas
 
 - Room photos upload to the `locations/` Storage folder, not a `rooms/` one, so
