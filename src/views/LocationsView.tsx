@@ -4,6 +4,7 @@ import { LOCATION_KINDS, type LocationKind, type StorageLocation } from '../type
 import { stockStatus, STATUS_ORDER } from '../lib/stock'
 import { uploadPhoto, deletePhoto } from '../lib/images'
 import { Empty, Field, Sheet, StatusChip } from '../ui/primitives'
+import { SwipeRow } from '../ui/SwipeRow'
 import { ItemRow } from '../ui/ItemRow'
 import CaptureSweep, { pendingShots } from './CaptureSweep'
 import { parseTags, tagCloud } from '../lib/tags'
@@ -21,11 +22,13 @@ const KIND_ICON: Record<LocationKind, string> = {
 
 export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string) => void }) {
   const locations = useStore(s => s.locations)
+  const deleteLocation = useStore(s => s.deleteLocation)
   const items = useStore(s => s.items)
   const plan = useStore(s => s.plan)
   const settings = useStore(s => s.settings)
 
   const [editing, setEditing] = useState<StorageLocation | 'new' | null>(null)
+  const [swipedId, setSwipedId] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [sweep, setSweep] = useState(false)
   const [addTo, setAddTo] = useState<string | null>(null)
@@ -107,8 +110,20 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
     const worst = worstStatus.get(loc.id) ?? 'ok'
     const total = own.length + kids.reduce((a, k) => a + (itemsByLoc.get(k.id)?.length ?? 0), 0)
 
+    // Deleting a place unfiles whatever is in it rather than destroying it, but
+    // that is still a surprise worth naming, so a place with contents asks once.
+    const strands = total + kids.length
     return (
       <div key={loc.id}>
+        <SwipeRow
+          id={loc.id}
+          openId={swipedId}
+          setOpenId={setSwipedId}
+          onDelete={() => deleteLocation(loc.id)}
+          confirmLabel={strands > 0
+            ? `Delete · ${total} ${total === 1 ? 'item' : 'items'} unfiled`
+            : null}
+        >
         <div
           className="flex items-center gap-2 border-b border-ink-700/60 px-3 py-2.5"
           style={{ paddingLeft: `${0.75 + depth * 1.1}rem` }}
@@ -131,6 +146,7 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
             aria-label={`Edit ${loc.name}`}
           >⋯</button>
         </div>
+        </SwipeRow>
 
         {isOpen && (
           <div className="bg-ink-850/50">

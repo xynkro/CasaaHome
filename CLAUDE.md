@@ -86,6 +86,25 @@ that, so one untouched field would throw the whole save. Every write path
 (`saveItem`, `saveLocation`, `savePlan`, `saveSettings`, `saveShopping`) runs
 its patch through it.
 
+## Swipe to delete
+
+`src/ui/SwipeRow.tsx` wraps a list row so it can be swiped left to delete. Two
+details are load-bearing and easy to undo by accident:
+
+- **`touch-action: pan-y`** on the moving element hands vertical scrolling back
+  to the browser and keeps only the horizontal axis. Drop it and the list
+  becomes unscrollable, which is far worse than a buried delete.
+- **The row NARROWS, it does not slide.** Pushing the row left is the usual
+  trick; it carried short labels like "Bare shelf" clean off the screen and left
+  a red Delete button next to nothing. Shrinking keeps the name anchored and
+  lets it truncate, so you can still read what you are deleting.
+
+The gesture also refuses to engage until horizontal movement beats vertical —
+fingers travel in arcs, and engaging on the first horizontal pixel fires
+constantly during an ordinary scroll. Deleting a place with contents asks once
+in a full-width bar, because the sentence naming what gets unfiled does not fit
+in a 92pt tab.
+
 ## Gotchas
 
 - Room photos upload to the `locations/` Storage folder, not a `rooms/` one, so
