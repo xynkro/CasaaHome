@@ -16,7 +16,8 @@
     "emu": "firebase emulators:start --project casaahome",
     "dev:emu": "VITE_USE_EMULATOR=true vite",
     "build:hosting": "DEPLOY_BASE=/ tsc -b && DEPLOY_BASE=/ vite build",
-    "deploy:hosting": "npm run build:hosting && firebase deploy --only hosting --project casaahome"
+    "deploy:hosting": "npm run build:hosting && firebase deploy --only hosting --project casaahome",
+    "seed:emu": "tsx scripts/seed-emulator.ts"
   },
   "dependencies": {
     "firebase": "^12.17.0",

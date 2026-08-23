@@ -2,9 +2,16 @@ import type { Item, Settings, StorageLocation, HousePlan } from '../types'
 import { fmtCover, fmtQty, stockStatus } from '../lib/stock'
 import { StatusChip } from './primitives'
 import { locationPath } from '../store'
+import { SwipeRow } from './SwipeRow'
+
+export interface RowSwipe {
+  openId: string | null
+  setOpenId: (id: string | null) => void
+  onDelete: (id: string) => void | Promise<void>
+}
 
 export function ItemRow({
-  item, settings, locMap, plan, onOpen, right, dense,
+  item, settings, locMap, plan, onOpen, right, dense, swipe,
 }: {
   item: Item
   settings: Settings
@@ -13,13 +20,20 @@ export function ItemRow({
   onOpen: (id: string) => void
   right?: React.ReactNode
   dense?: boolean
+  /**
+   * Opt in to swipe-to-delete. Deliberately not the default: the same row
+   * component renders the dashboard's "Needs attention" list, and a row is
+   * there because the thing is running LOW, not because it should be deleted.
+   * Swiping is for the views where you are curating what exists.
+   */
+  swipe?: RowSwipe
 }) {
   const status = stockStatus(item, settings)
   const cover = fmtCover(item)
   const where = locationPath(item.locationId, locMap, plan)
   const thumb = item.photoUrls?.[0]
 
-  return (
+  const row = (
     <div
       role="button"
       tabIndex={0}
@@ -67,6 +81,22 @@ export function ItemRow({
         </div>
       )}
     </div>
+  )
+
+  if (!swipe) return row
+  return (
+    <SwipeRow
+      id={item.id}
+      openId={swipe.openId}
+      setOpenId={swipe.setOpenId}
+      onDelete={() => swipe.onDelete(item.id)}
+      // An item delete is not recoverable the way a place delete is — a place
+      // unfiles its contents, an item just stops existing along with its count
+      // history. So it always asks, however empty it looks.
+      confirmLabel="Delete for good"
+    >
+      {row}
+    </SwipeRow>
   )
 }
 

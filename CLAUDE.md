@@ -101,9 +101,20 @@ details are load-bearing and easy to undo by accident:
 
 The gesture also refuses to engage until horizontal movement beats vertical —
 fingers travel in arcs, and engaging on the first horizontal pixel fires
-constantly during an ordinary scroll. Deleting a place with contents asks once
-in a full-width bar, because the sentence naming what gets unfiled does not fit
-in a 92pt tab.
+constantly during an ordinary scroll. A completed swipe swallows the click that
+ends it, or swiping a row would also open the thing you were trying to delete.
+
+Deleting a place with contents asks once in a full-width bar, because the
+sentence naming what gets unfiled does not fit in a 92pt tab. **Items always
+ask**: a place delete unfiles its contents, an item delete loses the thing and
+its count history.
+
+`ItemRow` takes swipe as an **opt-in prop, deliberately not a default**. The
+same component renders the dashboard's "Needs attention" and "Use these up": a
+row is there because something is running LOW, not because it should be deleted,
+and a mis-swipe there would destroy the thing you were about to buy. Swiping is
+wired only where you are curating what exists — Search, the Places tree, unfiled
+items, and inside a cupboard.
 
 ## Gotchas
 
@@ -157,6 +168,7 @@ blank white screen, which is the cache, not a bug in the app.
 npm run dev
 npm run typecheck
 npm run build
+npm run seed:emu          # fill the emulator with a believable house
 npm run rules:deploy      # CI deploys the app; this is only for rules
 FIREBASE_SERVICE_ACCOUNT="$(cat serviceAccount.json)" npm run notify:dry
 ```

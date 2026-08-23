@@ -23,12 +23,14 @@ const KIND_ICON: Record<LocationKind, string> = {
 export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string) => void }) {
   const locations = useStore(s => s.locations)
   const deleteLocation = useStore(s => s.deleteLocation)
+  const deleteItem = useStore(s => s.deleteItem)
   const items = useStore(s => s.items)
   const plan = useStore(s => s.plan)
   const settings = useStore(s => s.settings)
 
   const [editing, setEditing] = useState<StorageLocation | 'new' | null>(null)
   const [swipedId, setSwipedId] = useState<string | null>(null)
+  const [swipedItem, setSwipedItem] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [sweep, setSweep] = useState(false)
   const [addTo, setAddTo] = useState<string | null>(null)
@@ -151,7 +153,11 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
         {isOpen && (
           <div className="bg-ink-850/50">
             {own.map(i => (
-              <ItemRow key={i.id} item={i} settings={settings} locMap={locMap} plan={plan} onOpen={onOpenItem} dense />
+              <ItemRow
+                key={i.id} item={i} settings={settings} locMap={locMap} plan={plan}
+                onOpen={onOpenItem} dense
+                swipe={{ openId: swipedItem, setOpenId: setSwipedItem, onDelete: deleteItem }}
+              />
             ))}
             {own.length === 0 && kids.length === 0 && (
               <div className="px-4 py-3 text-center text-mini text-ink-500">
@@ -237,7 +243,11 @@ export default function LocationsView({ onOpenItem }: { onOpenItem: (id: string)
                 <span className="tnum text-mini text-ink-500">{unfiled.length}</span>
               </header>
               {unfiled.map(i => (
-                <ItemRow key={i.id} item={i} settings={settings} locMap={locMap} plan={plan} onOpen={onOpenItem} dense />
+                <ItemRow
+                key={i.id} item={i} settings={settings} locMap={locMap} plan={plan}
+                onOpen={onOpenItem} dense
+                swipe={{ openId: swipedItem, setOpenId: setSwipedItem, onDelete: deleteItem }}
+              />
               ))}
             </section>
           )}

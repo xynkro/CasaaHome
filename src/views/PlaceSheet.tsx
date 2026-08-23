@@ -24,7 +24,9 @@ export default function PlaceSheet({
   const items = useStore(s => s.items)
   const plan = useStore(s => s.plan)
   const settings = useStore(s => s.settings)
+  const deleteItem = useStore(s => s.deleteItem)
   const [addOpen, setAddOpen] = useState(false)
+  const [swipedId, setSwipedId] = useState<string | null>(null)
 
   const locMap = useMemo(() => new Map(locations.map(l => [l.id, l])), [locations])
   const loc = locationId ? locMap.get(locationId) : null
@@ -113,6 +115,7 @@ export default function PlaceSheet({
                 plan={plan}
                 onOpen={id => { onClose(); onOpenItem(id) }}
                 dense
+                swipe={{ openId: swipedId, setOpenId: setSwipedId, onDelete: deleteItem }}
               />
             ))}
           </div>

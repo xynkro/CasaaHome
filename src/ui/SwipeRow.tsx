@@ -46,6 +46,10 @@ export function SwipeRow({
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   const start = useRef<{ x: number; y: number; axis: 'none' | 'x' | 'y' } | null>(null)
+  // A row is usually tappable underneath — a cupboard expands, an item opens.
+  // Without this the click that ends a swipe also fires that, so swiping to
+  // delete would open the very thing you were trying to get rid of.
+  const swallowClick = useRef(false)
 
   const open = openId === id
   useEffect(() => {
@@ -83,6 +87,7 @@ export function SwipeRow({
     const s = start.current
     start.current = null
     if (!s || s.axis !== 'x') return
+    swallowClick.current = true
     if (dx <= -COMMIT) setOpenId(id)
     else { setOpenId(null); setDx(0) }
   }
@@ -128,6 +133,12 @@ export function SwipeRow({
         onPointerMove={move}
         onPointerUp={up}
         onPointerCancel={up}
+        onClickCapture={e => {
+          if (!swallowClick.current) return
+          swallowClick.current = false
+          e.preventDefault()
+          e.stopPropagation()
+        }}
         style={{
           width: confirming ? '0px' : `calc(100% - ${Math.min(-dx, ACTION_W + 24)}px)`,
           transition: start.current?.axis === 'x' ? undefined : 'width 180ms cubic-bezier(.22,.61,.36,1)',

@@ -29,12 +29,14 @@ export default function SearchView({ onOpenItem }: { onOpenItem: (id: string) =>
   const locations = useStore(s => s.locations)
   const plan = useStore(s => s.plan)
   const settings = useStore(s => s.settings)
+  const deleteItem = useStore(s => s.deleteItem)
 
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [category, setCategory] = useState('')
   const [adding, setAdding] = useState(false)
   const [openPlace, setOpenPlace] = useState<string | null>(null)
+  const [swipedId, setSwipedId] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const deferred = useDeferredValue(q)
 
@@ -217,6 +219,7 @@ export default function SearchView({ onOpenItem }: { onOpenItem: (id: string) =>
               locMap={locMap}
               plan={plan}
               onOpen={onOpenItem}
+              swipe={{ openId: swipedId, setOpenId: setSwipedId, onDelete: deleteItem }}
             />
           ))}
           </div>
