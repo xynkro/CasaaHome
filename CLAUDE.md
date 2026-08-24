@@ -118,9 +118,18 @@ items, and inside a cupboard.
 
 ## What can we cook
 
-`src/lib/recipes.ts` is a fixed library of 18 recipes plus the matcher, pure and
+`src/lib/recipes.ts` is a fixed library of 40 recipes plus the matcher, pure and
 testable; `src/views/CookView.tsx` is the screen, reachable from a dashboard
 card at `/cook`.
+
+**Five cuisines, no sixth**: Peranakan, Chinese, Japanese, Italian, French —
+what the household actually cooks. There is deliberately no "other" bucket; a
+junk drawer of beans on toast would rank alongside food someone wants to eat.
+Each cuisine must keep a **low-barrier way in** (a dish blocked by five or fewer
+non-staple ingredients) — Peranakan and French run to twelve ingredients a dish,
+and a cuisine whose every entry reads "nine short" is decoration, not a feature.
+`scripts/recipes.test.ts` enforces both the floor per cuisine and that an
+ordinary kitchen gets within three ingredients of all five.
 
 **Deliberately not generated.** The client bundle must never carry an API key
 (hard rule 2), so a model call would have to go through the hourly Action — and
@@ -139,6 +148,11 @@ Three things the matcher gets right and are easy to break:
   entry nobody will make.
 - **Matching is whole-word, not substring** (`mentions`). Substring matching had
   "rice" finding "rice vinegar" and claiming a condiment was dinner.
+- **`norm` folds accents.** Without it "Gruyère" becomes "gruy re" — the
+  accented letter is a word break — so the ingredient can never be found and the
+  recipe silently claims you lack a cheese sitting in the fridge.
+- **Chilli exists twice on purpose** (`CHILLI`, `CHILLI_OPT`). It is the point
+  of a sambal and a garnish on a fried egg; one constant cannot be both.
 
 Missing ingredients split into `missingTracked` (an item exists at zero, so it
 is **already** on the shopping list — offering to add it again just creates a

@@ -31,9 +31,19 @@ export interface Ingredient {
   optional?: boolean
 }
 
+/**
+ * The five the household actually cooks. Everything in the library belongs to
+ * one of them — there is no "other" bucket, because a junk drawer of beans on
+ * toast would rank alongside the food someone actually wants to eat.
+ */
+export type Cuisine = 'Peranakan' | 'Chinese' | 'Japanese' | 'Italian' | 'French'
+
+export const CUISINES: Cuisine[] = ['Peranakan', 'Chinese', 'Japanese', 'Italian', 'French']
+
 export interface Recipe {
   id: string
   name: string
+  cuisine: Cuisine
   blurb: string
   minutes: number
   serves: number
@@ -71,10 +81,18 @@ export interface Match {
 }
 
 const WORD = /[^a-z0-9]+/g
+const MARKS = /[\u0300-\u036f]/g
 
-/** Lowercase, strip punctuation, collapse spaces. */
+/**
+ * Lowercase, fold accents, strip punctuation, collapse spaces.
+ *
+ * The accent folding is not cosmetic. Without it "Gruyère" normalises to
+ * "gruy re" — the accented letter becomes a word break — so the ingredient
+ * could never be found in anything, and the failure is silent: the recipe just
+ * quietly claims you do not have a cheese that is sitting in the fridge.
+ */
 export function norm(s: string | null | undefined): string {
-  return (s ?? '').toLowerCase().replace(WORD, ' ').trim()
+  return (s ?? '').normalize('NFD').replace(MARKS, '').toLowerCase().replace(WORD, ' ').trim()
 }
 
 /**
@@ -140,102 +158,237 @@ export function matchAll(recipes: Recipe[], pantry: Pantry): Match[] {
 const ing = (name: string, match: string[], extra: Partial<Ingredient> = {}): Ingredient =>
   ({ name, match, ...extra })
 
+/* Assumed present unless the house says it has run out. */
 const SALT = ing('Salt', ['salt', 'sea salt'], { staple: true })
-const OIL = ing('Cooking oil', ['oil', 'cooking oil', 'vegetable oil', 'olive oil'], { staple: true })
+const OIL = ing('Cooking oil', ['oil', 'cooking oil', 'vegetable oil'], { staple: true })
 const PEPPER = ing('Pepper', ['pepper', 'black pepper', 'white pepper'], { staple: true })
+const SUGAR = ing('Sugar', ['sugar'], { staple: true })
 const SOY = ing('Soy sauce', ['soy sauce', 'soy', 'light soy'], { staple: true })
-const GARLIC = ing('Garlic', ['garlic'])
-const ONION = ing('Onion', ['onion', 'onions', 'shallot', 'shallots'])
+
+/* Everyday */
 const EGGS = ing('Eggs', ['egg', 'eggs'])
 const RICE = ing('Rice', ['rice', 'jasmine rice', 'white rice'])
-const MILK = ing('Milk', ['milk', 'fresh milk'])
-const BUTTER = ing('Butter', ['butter'])
-const FLOUR = ing('Flour', ['flour', 'plain flour'])
-const SUGAR = ing('Sugar', ['sugar'], { staple: true })
-const PASTA = ing('Pasta', ['pasta', 'spaghetti', 'penne', 'macaroni'])
-const NOODLES = ing('Noodles', ['noodles', 'instant noodles', 'ramen', 'mee'])
-const BREAD = ing('Bread', ['bread', 'loaf', 'toast'])
-const CHEESE = ing('Cheese', ['cheese', 'cheddar', 'parmesan'])
-const TOMATO = ing('Tomatoes', ['tomato', 'tomatoes', 'canned tomatoes'])
-const CHICKEN = ing('Chicken', ['chicken', 'chicken breast', 'chicken thigh'])
-const OYSTER = ing('Oyster sauce', ['oyster sauce'])
-const SESAME = ing('Sesame oil', ['sesame oil'], { optional: true })
-const CHILLI = ing('Chilli', ['chilli', 'chili', 'chilli flakes'], { optional: true })
-const SPRING = ing('Spring onion', ['spring onion', 'scallion', 'scallions'], { optional: true })
+const GARLIC = ing('Garlic', ['garlic'])
+const ONION = ing('Onion', ['onion', 'onions'])
+const SHALLOT = ing('Shallots', ['shallot', 'shallots'])
 const GINGER = ing('Ginger', ['ginger'])
+const SPRING = ing('Spring onion', ['spring onion', 'scallion', 'scallions'], { optional: true })
+const CHILLI = ing('Chilli', ['chilli', 'chili', 'red chilli'])
+/** The same thing where it is a garnish rather than the point of the dish. */
+const CHILLI_OPT = ing('Chilli', ['chilli', 'chili', 'red chilli'], { optional: true })
+const BUTTER = ing('Butter', ['butter'])
+const MILK = ing('Milk', ['milk', 'fresh milk'])
+const CREAM = ing('Cream', ['cream', 'double cream', 'whipping cream'])
+const FLOUR = ing('Flour', ['flour', 'plain flour'])
 const POTATO = ing('Potatoes', ['potato', 'potatoes'])
 const CARROT = ing('Carrots', ['carrot', 'carrots'])
-const STOCK = ing('Stock cube', ['stock', 'stock cube', 'bouillon'], { optional: true })
-const TUNA = ing('Tinned tuna', ['tuna'])
-const BEANS = ing('Tinned beans', ['beans', 'baked beans', 'chickpeas'])
-const CURRY = ing('Curry powder', ['curry powder', 'curry'])
-const COCONUT = ing('Coconut milk', ['coconut milk', 'coconut'])
+const TOMATO = ing('Tomatoes', ['tomato', 'tomatoes', 'canned tomatoes'])
+const CUCUMBER = ing('Cucumber', ['cucumber'])
+const CABBAGE = ing('Cabbage', ['cabbage'])
+const BREAD = ing('Bread', ['bread', 'loaf', 'baguette'])
+const CHICKEN = ing('Chicken', ['chicken', 'chicken thigh', 'chicken breast'])
+const PORK = ing('Pork', ['pork', 'pork belly', 'minced pork'])
+const PRAWNS = ing('Prawns', ['prawn', 'prawns', 'shrimp'])
+const TOFU = ing('Tofu', ['tofu', 'tau kwa', 'beancurd'])
+const STOCK = ing('Stock', ['stock', 'stock cube', 'bouillon', 'broth'], { optional: true })
+const LIME = ing('Lime', ['lime', 'calamansi'], { optional: true })
+const CORNFLOUR = ing('Cornflour', ['cornflour', 'cornstarch'], { optional: true })
+
+/* Peranakan */
+const BELACAN = ing('Belacan', ['belacan', 'shrimp paste'])
+const LEMONGRASS = ing('Lemongrass', ['lemongrass', 'serai'])
+const GALANGAL = ing('Galangal', ['galangal', 'lengkuas'], { optional: true })
+const TURMERIC = ing('Turmeric', ['turmeric', 'kunyit'])
+const CANDLENUT = ing('Candlenuts', ['candlenut', 'candlenuts', 'buah keras'], { optional: true })
+const COCONUT = ing('Coconut milk', ['coconut milk', 'coconut cream', 'santan'])
+const TAMARIND = ing('Tamarind', ['tamarind', 'assam'])
+const LAKSA_LEAF = ing('Laksa leaf', ['laksa leaf', 'daun kesum', 'vietnamese mint'], { optional: true })
+const PALM_SUGAR = ing('Palm sugar', ['palm sugar', 'gula melaka'], { optional: true })
+const DRIED_SHRIMP = ing('Dried shrimp', ['dried shrimp', 'hae bee'], { optional: true })
+const KAFFIR = ing('Kaffir lime leaf', ['kaffir lime leaf', 'lime leaf'], { optional: true })
+const CURRY_POWDER = ing('Curry powder', ['curry powder'])
+const RICE_NOODLES = ing('Rice noodles', ['rice noodles', 'bee hoon', 'vermicelli', 'laksa noodles'])
+const BEANSPROUTS = ing('Beansprouts', ['beansprouts', 'bean sprouts', 'taugeh'], { optional: true })
+
+/* Chinese */
+const OYSTER = ing('Oyster sauce', ['oyster sauce'])
+const SESAME = ing('Sesame oil', ['sesame oil'])
+const SHAOXING = ing('Shaoxing wine', ['shaoxing', 'rice wine', 'cooking wine'], { optional: true })
+const VINEGAR = ing('Rice vinegar', ['rice vinegar', 'black vinegar', 'chinkiang'], { optional: true })
+const NOODLES = ing('Noodles', ['noodles', 'egg noodles', 'mee', 'ramen'])
+const DARK_SOY = ing('Dark soy sauce', ['dark soy', 'dark soy sauce'], { optional: true })
+const CHOY = ing('Green vegetable', ['choy sum', 'bok choy', 'kai lan', 'spinach', 'greens'])
+
+/* Japanese */
+const MIRIN = ing('Mirin', ['mirin'])
+const DASHI = ing('Dashi', ['dashi', 'bonito', 'katsuobushi'], { optional: true })
+const MISO = ing('Miso', ['miso', 'miso paste'])
+const NORI = ing('Nori', ['nori', 'seaweed'], { optional: true })
+const PANKO = ing('Panko', ['panko', 'breadcrumbs'])
+const SAKE = ing('Sake', ['sake'], { optional: true })
+const SESAME_SEEDS = ing('Sesame seeds', ['sesame seeds', 'sesame seed'], { optional: true })
+
+/* Italian */
+const PASTA = ing('Pasta', ['pasta', 'spaghetti', 'penne', 'linguine', 'rigatoni'])
+const OLIVE_OIL = ing('Olive oil', ['olive oil', 'extra virgin'])
+const PARMESAN = ing('Parmesan', ['parmesan', 'parmigiano', 'pecorino', 'hard cheese'])
+const BASIL = ing('Basil', ['basil'], { optional: true })
+const PANCETTA = ing('Pancetta', ['pancetta', 'guanciale', 'bacon'])
+const ANCHOVY = ing('Anchovies', ['anchovy', 'anchovies'])
+const ARBORIO = ing('Risotto rice', ['arborio', 'risotto rice', 'carnaroli'])
+const WHITE_WINE = ing('White wine', ['white wine', 'wine'], { optional: true })
+const MOZZARELLA = ing('Mozzarella', ['mozzarella'])
+const CANNELLINI = ing('Tinned beans', ['cannellini', 'butter beans', 'chickpeas', 'beans'])
+
+/* French */
+const DIJON = ing('Dijon mustard', ['dijon', 'mustard'])
+const THYME = ing('Thyme', ['thyme', 'herbs de provence', 'mixed herbs'], { optional: true })
+const GRUYERE = ing('Gruyere', ['gruyere', 'emmental', 'cheese'])
+const HAM = ing('Ham', ['ham', 'jambon'])
+const LENTILS = ing('Lentils', ['lentils', 'puy lentils'])
+const VINEGAR_W = ing('Wine vinegar', ['wine vinegar', 'red wine vinegar', 'vinegar'], { optional: true })
 
 export const RECIPES: Recipe[] = [
+  /* ---------------- Peranakan ---------------- */
   {
-    id: 'egg-fried-rice', name: 'Egg fried rice', minutes: 15, serves: 2,
+    id: 'sambal-telur', name: 'Sambal telur', cuisine: 'Peranakan', minutes: 25, serves: 2,
+    blurb: 'Hard-boiled eggs in a proper sambal. The gateway dish.',
+    needs: [EGGS, CHILLI, SHALLOT, GARLIC, BELACAN, TAMARIND, SUGAR, OIL],
+    tags: ['quick'],
+    steps: [
+      'Boil the eggs eight minutes, peel them, and fry them whole until the outsides blister and go golden. Set aside.',
+      'Blend chilli, shallots, garlic and belacan into a rough paste.',
+      'Fry the paste in a good amount of oil on a low flame until it darkens and the oil separates out — ten minutes, and do not rush it. This step IS the dish.',
+      'Tamarind water and a little sugar in, taste for the sour-sweet-salt balance, then roll the eggs through it.',
+    ],
+  },
+  {
+    id: 'nasi-goreng-belacan', name: 'Belacan fried rice', cuisine: 'Peranakan', minutes: 20, serves: 2,
+    blurb: 'Fried rice with the volume turned up.',
+    needs: [RICE, EGGS, BELACAN, CHILLI, SHALLOT, GARLIC, OIL, CUCUMBER],
+    tags: ['quick', 'one-pan'],
+    steps: [
+      'Pound or blend chilli, shallot, garlic and a small piece of belacan.',
+      'Fry the paste in oil until fragrant and darkened, about five minutes.',
+      'Day-old rice in, press it flat, let it catch before you toss it.',
+      'Push aside, scramble the eggs in the gap, fold through. Cucumber on the side to cool it down.',
+    ],
+  },
+  {
+    id: 'ayam-pongteh', name: 'Ayam pongteh', cuisine: 'Peranakan', minutes: 60, serves: 4,
+    blurb: 'Chicken braised in fermented bean paste. Better the next day.',
+    needs: [CHICKEN, POTATO, SHALLOT, GARLIC, PALM_SUGAR, SOY, OIL, ing('Taucheo', ['taucheo', 'fermented bean paste', 'miso'])],
+    tags: [],
+    steps: [
+      'Blend the shallots and garlic to a paste. Fry it slowly in oil until sweet and golden.',
+      'Taucheo in, fry another minute so it loses its raw edge.',
+      'Chicken in to coat, then water to cover, palm sugar and dark soy.',
+      'Simmer forty minutes. Potatoes in for the last twenty so they thicken the gravy as they soften.',
+    ],
+  },
+  {
+    id: 'laksa-quick', name: 'Weeknight laksa', cuisine: 'Peranakan', minutes: 35, serves: 2,
+    blurb: 'A short-cut version that still tastes like the real thing.',
+    needs: [RICE_NOODLES, COCONUT, PRAWNS, CHILLI, SHALLOT, LEMONGRASS, TURMERIC, BELACAN, CANDLENUT, GALANGAL, LAKSA_LEAF, BEANSPROUTS, EGGS],
+    tags: [],
+    steps: [
+      'Blend chilli, shallot, lemongrass, turmeric, candlenut, galangal and belacan into a rempah.',
+      'Fry the rempah in oil until the oil separates — this is the whole flavour, give it ten minutes.',
+      'Prawn shells in for a minute if you have them, then water, then coconut milk. Simmer, do not boil hard.',
+      'Prawns in for three minutes. Noodles and beansprouts in the bowl, soup over, halved egg and laksa leaf on top.',
+    ],
+  },
+  {
+    id: 'assam-fish', name: 'Assam fish', cuisine: 'Peranakan', minutes: 30, serves: 3,
+    blurb: 'Sour, hot, and cuts through a heavy day.',
+    needs: [ing('Fish', ['fish', 'fish fillet', 'snapper', 'mackerel']), TAMARIND, CHILLI, SHALLOT, BELACAN, LEMONGRASS, TURMERIC, TOMATO, SUGAR],
+    tags: [],
+    steps: [
+      'Rempah first: chilli, shallot, belacan, lemongrass, turmeric, blended and fried until the oil comes out.',
+      'Tamarind water in, plus enough water to make a gravy. Simmer ten minutes so it stops tasting raw.',
+      'Tomatoes in, then the fish. Do not stir once the fish is in — shake the pan instead.',
+      'Eight minutes, covered. Balance sour, salt and a little sugar at the end.',
+    ],
+  },
+  {
+    id: 'chap-chye', name: 'Chap chye', cuisine: 'Peranakan', minutes: 40, serves: 4,
+    blurb: 'The braised cabbage dish that turns up at every Peranakan table.',
+    needs: [CABBAGE, CARROT, TOFU, DRIED_SHRIMP, GARLIC, SHALLOT, SOY, ing('Taucheo', ['taucheo', 'fermented bean paste', 'miso']), ing('Glass noodles', ['glass noodles', 'tang hoon', 'vermicelli'], { optional: true })],
+    tags: ['vegetarian-ish'],
+    steps: [
+      'Soften the dried shrimp in water; keep the water, it is the stock.',
+      'Shallot and garlic in oil, taucheo in, one minute.',
+      'Cabbage and carrot in, coat them, then the soaking water. Cover and let it collapse — twenty minutes.',
+      'Tofu and glass noodles in at the end to soak up what is left. It should be wet, not soupy.',
+    ],
+  },
+  {
+    id: 'sambal-kangkong', name: 'Sambal green vegetable', cuisine: 'Peranakan', minutes: 12, serves: 2,
+    blurb: 'Ninety seconds of cooking, once the paste is made.',
+    needs: [CHOY, CHILLI, SHALLOT, GARLIC, BELACAN, OIL, DRIED_SHRIMP],
+    tags: ['quick', 'one-pan'],
+    steps: [
+      'Blend chilli, shallot, garlic, belacan and dried shrimp.',
+      'Fry the paste hard in oil until it darkens and smells of the hawker centre.',
+      'Greens in, toss for ninety seconds — they should still squeak.',
+      'Off the heat immediately or they go grey and sad.',
+    ],
+  },
+
+  {
+    id: 'curry-kapitan', name: 'Curry kapitan', cuisine: 'Peranakan', minutes: 50, serves: 4,
+    blurb: 'The Nyonya chicken curry — lighter and sharper than the Indian ones.',
+    needs: [CHICKEN, COCONUT, CURRY_POWDER, SHALLOT, GARLIC, LEMONGRASS, TURMERIC, CANDLENUT, KAFFIR, LIME, TAMARIND, OIL],
+    tags: [],
+    steps: [
+      'Blend shallot, garlic, lemongrass, turmeric and candlenut into a rempah.',
+      'Fry it in oil on a low flame until it darkens and the oil splits out. Curry powder in for the last minute.',
+      'Chicken in to coat and colour, then coconut milk and the lime leaves.',
+      'Simmer uncovered thirty minutes. Tamarind and a squeeze of lime right at the end — it should finish sour, not sweet.',
+    ],
+  },
+
+  /* ---------------- Chinese ---------------- */
+  {
+    id: 'smashed-cucumber', name: 'Smashed cucumber', cuisine: 'Chinese', minutes: 10, serves: 2,
+    blurb: 'Five minutes, no cooking, and it rescues a heavy meal.',
+    needs: [CUCUMBER, GARLIC, VINEGAR, SESAME, SOY, CHILLI_OPT, SUGAR, SESAME_SEEDS],
+    tags: ['quick', 'vegetarian', 'no-cook'],
+    steps: [
+      'Smash the cucumber with the flat of a knife until it splits, then tear it into rough pieces. Torn edges hold dressing; sliced ones do not.',
+      'Salt it and leave it in a colander ten minutes, then pour away the water that comes out.',
+      'Dress with crushed garlic, vinegar, a little soy, sesame oil, sugar and chilli.',
+      'Sesame seeds over. Eat it soon — it goes limp within the hour.',
+    ],
+  },
+  {
+    id: 'egg-fried-rice', name: 'Egg fried rice', cuisine: 'Chinese', minutes: 15, serves: 2,
     blurb: 'The one that exists because there is leftover rice.',
     needs: [RICE, EGGS, OIL, SOY, SPRING, GARLIC],
     tags: ['quick', 'one-pan', 'vegetarian'],
     steps: [
       'Day-old rice works far better than fresh — the grains stay separate.',
       'Beat the eggs. Get the pan hotter than feels sensible, oil in, eggs in, scramble and lift out while still soft.',
-      'Garlic in the same pan for ten seconds, then the rice. Press it flat and leave it alone so it toasts.',
+      'Garlic for ten seconds, then the rice. Press it flat and leave it alone so it toasts.',
       'Eggs back, soy round the edge of the pan rather than over the rice, toss, spring onion, off the heat.',
     ],
   },
   {
-    id: 'garlic-noodles', name: 'Garlic butter noodles', minutes: 12, serves: 2,
-    blurb: 'Store-cupboard, and better than it has any right to be.',
-    needs: [NOODLES, GARLIC, BUTTER, SOY, CHILLI, SPRING],
-    tags: ['quick', 'vegetarian'],
+    id: 'tomato-egg', name: 'Tomato and egg', cuisine: 'Chinese', minutes: 12, serves: 2,
+    blurb: 'What everyone actually cooks at home. Four ingredients.',
+    needs: [TOMATO, EGGS, SPRING, SUGAR, OIL, RICE],
+    tags: ['quick', 'one-pan', 'vegetarian'],
     steps: [
-      'Boil the noodles a minute short of the packet time. Keep a mug of the water.',
-      'Melt butter gently with sliced garlic — pale gold, not brown, or it turns bitter.',
-      'Noodles into the butter with a splash of the cooking water and the soy. Toss hard until it clings.',
-      'Chilli and spring onion off the heat.',
+      'Beat the eggs with a pinch of salt. Scramble them in hot oil until just set, lift out.',
+      'Tomato wedges into the same pan, a pinch of sugar, and let them break down into a sauce.',
+      'Eggs back in, fold through so they soak up the tomato without turning to rubber.',
+      'Spring onion, and rice underneath.',
     ],
   },
   {
-    id: 'tomato-pasta', name: 'Tomato and garlic pasta', minutes: 20, serves: 2,
-    blurb: 'Four things, one pan of sauce.',
-    needs: [PASTA, TOMATO, GARLIC, OIL, SALT, CHEESE, CHILLI],
-    tags: ['vegetarian'],
-    steps: [
-      'Pasta into well-salted boiling water.',
-      'Sliced garlic into cold oil, warm it slowly so the garlic infuses rather than fries.',
-      'Tomatoes in, crush them, simmer while the pasta cooks. Season properly.',
-      'Drain the pasta wet and finish it in the sauce for a minute. Cheese off the heat.',
-    ],
-  },
-  {
-    id: 'scrambled-eggs-toast', name: 'Proper scrambled eggs on toast', minutes: 10, serves: 2,
-    blurb: 'Low heat and patience, nothing else.',
-    needs: [EGGS, BREAD, BUTTER, MILK, SALT, PEPPER],
-    tags: ['quick', 'breakfast', 'vegetarian'],
-    steps: [
-      'Beat the eggs with a splash of milk and a pinch of salt.',
-      'Butter in a cold pan, eggs in, then the lowest heat you have.',
-      'Stir slowly and constantly. It will look like nothing is happening, then all at once it will.',
-      'Off the heat while still glossy and slightly underdone — it carries on cooking. Toast under.',
-    ],
-  },
-  {
-    id: 'chicken-rice-quick', name: 'Ginger soy chicken with rice', minutes: 30, serves: 2,
-    blurb: 'A weeknight version, one pan and a rice cooker.',
-    needs: [CHICKEN, RICE, GINGER, GARLIC, SOY, OYSTER, SESAME, SPRING],
-    tags: ['one-pan'],
-    steps: [
-      'Rice on. Slice the chicken thin against the grain.',
-      'Ginger and garlic in hot oil until they smell like dinner, about thirty seconds.',
-      'Chicken in, spread out, leave it to colour before you touch it.',
-      'Soy and oyster sauce with a splash of water, bubble down until it coats. Sesame oil and spring onion off the heat.',
-    ],
-  },
-  {
-    id: 'fried-eggs-rice', name: 'Fried egg over rice', minutes: 8, serves: 1,
+    id: 'fried-eggs-rice', name: 'Fried egg over rice', cuisine: 'Chinese', minutes: 8, serves: 1,
     blurb: 'When cooking is not really on the table.',
-    needs: [RICE, EGGS, SOY, OIL, CHILLI],
+    needs: [RICE, EGGS, SOY, OIL, CHILLI_OPT],
     tags: ['quick', 'vegetarian', 'one-pan'],
     steps: [
       'Hot oil, egg in, spoon the oil over the white until the edges frill and crisp.',
@@ -244,147 +397,347 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'tuna-pasta', name: 'Tuna and tomato pasta', minutes: 20, serves: 2,
-    blurb: 'Entirely from tins and still good.',
-    needs: [PASTA, TUNA, TOMATO, GARLIC, OIL, CHILLI],
-    tags: ['storecupboard'],
-    steps: [
-      'Pasta on in salted water.',
-      'Garlic in oil, tomatoes in, simmer and season.',
-      'Tuna in at the end with its oil — break it up but leave some texture.',
-      'Toss through the drained pasta with a spoon of the cooking water.',
-    ],
-  },
-  {
-    id: 'potato-omelette', name: 'Potato omelette', minutes: 30, serves: 2,
-    blurb: 'Cheap, filling, good cold the next day.',
-    needs: [POTATO, EGGS, ONION, OIL, SALT],
-    tags: ['vegetarian'],
-    steps: [
-      'Slice the potatoes thin. Cook them gently in plenty of oil with the onion until soft, not brown.',
-      'Drain them and fold into beaten, well-salted eggs. Let it sit ten minutes.',
-      'Back into a smaller pan on low heat until almost set.',
-      'Plate over the top, flip, slide back in for two more minutes.',
-    ],
-  },
-  {
-    id: 'curry-veg', name: 'Coconut vegetable curry', minutes: 30, serves: 3,
-    blurb: 'Whatever vegetables are on their way out.',
-    needs: [COCONUT, CURRY, ONION, GARLIC, POTATO, CARROT, RICE, OIL],
-    tags: ['vegetarian'],
-    steps: [
-      'Onion in oil until soft and sweet. Garlic and curry powder in, fry a minute so it stops tasting raw.',
-      'Potato and carrot in, coat them in the paste.',
-      'Coconut milk in, simmer covered until the potato gives to a knife, twenty minutes or so.',
-      'Season hard — coconut swallows salt. Rice alongside.',
-    ],
-  },
-  {
-    id: 'beans-toast', name: 'Beans on toast, done properly', minutes: 10, serves: 2,
-    blurb: 'Not an admission of defeat if you season it.',
-    needs: [BEANS, BREAD, BUTTER, CHEESE, PEPPER],
-    tags: ['quick', 'vegetarian', 'storecupboard'],
-    steps: [
-      'Beans into a small pan on low, not the microwave. Let them reduce slightly.',
-      'Toast, buttered right to the edges.',
-      'Beans over, cheese on top so it melts into them, plenty of black pepper.',
-    ],
-  },
-  {
-    id: 'chicken-noodle-soup', name: 'Chicken noodle soup', minutes: 25, serves: 2,
-    blurb: 'For when someone is not feeling well.',
-    needs: [CHICKEN, NOODLES, GINGER, GARLIC, CARROT, STOCK, SOY, SPRING],
-    tags: ['one-pan'],
-    steps: [
-      'Ginger and garlic in a little oil, then water or stock in.',
-      'Carrot in, simmer until nearly tender.',
-      'Sliced chicken in — it needs three or four minutes, no more.',
-      'Noodles in for the last two. Soy to season, spring onion at the table.',
-    ],
-  },
-  {
-    id: 'pancakes', name: 'Pancakes', minutes: 20, serves: 2,
-    blurb: 'Flour, eggs, milk. Sunday.',
-    needs: [FLOUR, EGGS, MILK, BUTTER, SUGAR, SALT],
-    tags: ['breakfast', 'vegetarian'],
-    steps: [
-      'Whisk flour, a pinch of salt and a spoon of sugar. Eggs and milk in, whisk to a smooth batter.',
-      'Rest it twenty minutes if you can be bothered — it is noticeably better.',
-      'Butter a hot pan, ladle in, flip when the surface bubbles and the edges set.',
-    ],
-  },
-  {
-    id: 'garlic-bread', name: 'Garlic bread', minutes: 15, serves: 2,
-    blurb: 'Bread that has gone slightly stale, rescued.',
-    needs: [BREAD, BUTTER, GARLIC, CHEESE],
-    tags: ['quick', 'vegetarian'],
-    steps: [
-      'Mash crushed garlic into soft butter with a pinch of salt.',
-      'Split or slice the bread, butter it generously into every cut.',
-      'Hot oven until the edges are crisp. Cheese on for the last few minutes if you want it.',
-    ],
-  },
-  {
-    id: 'stirfry-veg', name: 'Whatever-is-left stir fry', minutes: 15, serves: 2,
-    blurb: 'The honest answer to a half-empty fridge.',
-    needs: [CARROT, ONION, GARLIC, SOY, OIL, OYSTER, RICE, CHILLI],
-    tags: ['quick', 'one-pan', 'vegetarian'],
-    steps: [
-      'Cut everything to roughly the same size so it cooks at the same rate.',
-      'Pan as hot as it goes. Hardest vegetables first, softest last.',
-      'Keep it moving. If it steams instead of frying, the pan is too full — do it in two batches.',
-      'Soy and oyster sauce at the very end so they glaze rather than boil.',
-    ],
-  },
-  {
-    id: 'french-toast', name: 'French toast', minutes: 15, serves: 2,
-    blurb: 'The other thing to do with tired bread.',
-    needs: [BREAD, EGGS, MILK, BUTTER, SUGAR],
-    tags: ['breakfast', 'quick', 'vegetarian'],
-    steps: [
-      'Beat eggs with milk and a little sugar in a wide dish.',
-      'Soak the bread properly — count to ten a side. Thin bread needs less.',
-      'Medium heat, butter, until deep gold on both sides.',
-    ],
-  },
-  {
-    id: 'egg-drop-soup', name: 'Egg drop soup', minutes: 12, serves: 2,
+    id: 'egg-drop-soup', name: 'Egg drop soup', cuisine: 'Chinese', minutes: 12, serves: 2,
     blurb: 'Five minutes and a stock cube.',
-    needs: [EGGS, STOCK, GINGER, SPRING, SOY],
+    needs: [EGGS, STOCK, GINGER, SPRING, SOY, CORNFLOUR],
     tags: ['quick', 'vegetarian'],
     steps: [
-      'Stock and a slice of ginger up to a bare simmer.',
+      'Stock and a slice of ginger up to a bare simmer. Thicken very slightly with cornflour if you like it silkier.',
       'Beat the eggs. Take the pan off the boil, stir the soup into a slow spiral and pour the egg in a thin stream.',
-      'Leave it ten seconds before stirring or you get scrambled egg soup.',
+      'Leave it ten seconds before stirring, or you get scrambled egg soup.',
       'Soy to season, spring onion over.',
     ],
   },
   {
-    id: 'mac-cheese', name: 'Macaroni cheese', minutes: 30, serves: 3,
-    blurb: 'A roux is not hard and this is the proof.',
-    needs: [PASTA, CHEESE, MILK, BUTTER, FLOUR, PEPPER],
-    tags: ['vegetarian'],
+    id: 'garlic-greens', name: 'Garlic oyster sauce greens', cuisine: 'Chinese', minutes: 10, serves: 2,
+    blurb: 'The side dish that makes a plain dinner look composed.',
+    needs: [CHOY, GARLIC, OYSTER, OIL, SESAME],
+    tags: ['quick', 'one-pan', 'vegetarian'],
     steps: [
-      'Pasta on. Meanwhile melt equal butter and flour and cook it two minutes so it stops tasting of flour.',
-      'Milk in a splash at a time, whisking, until smooth and thick enough to coat a spoon.',
-      'Off the heat, cheese in — it splits if you boil it after.',
-      'Fold the drained pasta through, plenty of pepper. Under a grill if you want a top.',
+      'Blanch the greens ninety seconds in boiling salted water, drain hard.',
+      'Sliced garlic in hot oil until pale gold.',
+      'Oyster sauce with a splash of water, bubble for a moment, pour over the greens.',
+      'A few drops of sesame oil at the end.',
     ],
   },
   {
-    id: 'chicken-curry', name: 'Chicken curry', minutes: 40, serves: 3,
-    blurb: 'Worth the extra twenty minutes.',
-    needs: [CHICKEN, CURRY, COCONUT, ONION, GARLIC, GINGER, RICE, OIL, POTATO],
+    id: 'mapo-tofu', name: 'Mapo tofu', cuisine: 'Chinese', minutes: 25, serves: 3,
+    blurb: 'Numbing, hot, and mostly storecupboard.',
+    needs: [TOFU, PORK, ing('Doubanjiang', ['doubanjiang', 'chilli bean paste', 'chilli paste']), GARLIC, GINGER, SPRING, CORNFLOUR, RICE, SOY],
+    tags: ['one-pan'],
+    steps: [
+      'Cube the tofu and leave it in hot salted water while you cook — it firms up and stops breaking.',
+      'Brown the pork hard. Doubanjiang in, fry until the oil turns red.',
+      'Garlic and ginger, then stock or water. Simmer five minutes.',
+      'Tofu in, drained, and shake rather than stir. Thicken with cornflour slurry in two goes. Spring onion over.',
+    ],
+  },
+  {
+    id: 'soy-braised-chicken', name: 'Soy braised chicken', cuisine: 'Chinese', minutes: 45, serves: 4,
+    blurb: 'One pot, and the sauce is the point.',
+    needs: [CHICKEN, SOY, DARK_SOY, GINGER, GARLIC, SUGAR, SHAOXING, SPRING, RICE],
+    tags: ['one-pan'],
+    steps: [
+      'Brown the chicken skin-side down in a dry pan until the fat renders and the skin is properly gold.',
+      'Ginger and garlic in, thirty seconds.',
+      'Shaoxing, both soys, sugar and enough water to come halfway up. Lid on.',
+      'Thirty minutes, turning once. Lid off for the last ten so the sauce reduces to a glaze.',
+    ],
+  },
+  {
+    id: 'chow-mein', name: 'Chow mein', cuisine: 'Chinese', minutes: 20, serves: 2,
+    blurb: 'The fridge-clearing noodle dish.',
+    needs: [NOODLES, CABBAGE, CARROT, GARLIC, SOY, OYSTER, SESAME, EGGS, SPRING],
+    tags: ['quick', 'one-pan'],
+    steps: [
+      'Boil the noodles a minute short, drain, toss in a little oil so they do not weld together.',
+      'Hardest vegetables first into a very hot pan, keep everything moving.',
+      'Noodles in, then the sauces down the side of the pan so they sizzle rather than steam.',
+      'Push aside, scramble an egg in the gap, fold through, sesame oil off the heat.',
+    ],
+  },
+
+  /* ---------------- Japanese ---------------- */
+  {
+    id: 'tamago-kake-gohan', name: 'Tamago kake gohan', cuisine: 'Japanese', minutes: 5, serves: 1,
+    blurb: 'Raw egg over hot rice. Two ingredients, and it is genuinely lovely.',
+    needs: [RICE, EGGS, SOY, SPRING, NORI],
+    tags: ['quick', 'vegetarian'],
+    steps: [
+      'Rice as hot as it comes out of the cooker, into a bowl.',
+      'Crack the egg straight on and beat it into the rice with chopsticks — the heat is what cooks it.',
+      'A small splash of soy, spring onion and torn nori.',
+    ],
+  },
+  {
+    id: 'miso-soup', name: 'Miso soup', cuisine: 'Japanese', minutes: 10, serves: 2,
+    blurb: 'Ten minutes, and it makes anything else look like a meal.',
+    needs: [MISO, TOFU, DASHI, SPRING, NORI],
+    tags: ['quick', 'vegetarian'],
+    steps: [
+      'Dashi up to a bare simmer — or water and a piece of kombu if that is what you have.',
+      'Cubed tofu in for two minutes.',
+      'Take it OFF the heat, then whisk the miso in through a ladle. Boiling miso kills it.',
+      'Spring onion and seaweed in the bowl.',
+    ],
+  },
+  {
+    id: 'oyakodon', name: 'Oyakodon', cuisine: 'Japanese', minutes: 20, serves: 2,
+    blurb: 'Chicken and egg over rice, in one small pan.',
+    needs: [CHICKEN, EGGS, ONION, SOY, MIRIN, DASHI, RICE, SPRING, SAKE],
+    tags: ['one-pan'],
+    steps: [
+      'Sliced onion, soy, mirin, sake and dashi into a small shallow pan. Simmer until the onion softens.',
+      'Chicken in, spread out, five minutes.',
+      'Beaten egg poured over in a spiral — do not stir it in.',
+      'Lid on, thirty seconds, off the heat while the egg is still barely set. Slide onto rice.',
+    ],
+  },
+  {
+    id: 'katsu', name: 'Chicken katsu', cuisine: 'Japanese', minutes: 30, serves: 2,
+    blurb: 'Worth it for the noise it makes.',
+    needs: [CHICKEN, PANKO, EGGS, FLOUR, CABBAGE, RICE, OIL],
     tags: [],
     steps: [
-      'Onion slowly in oil until properly golden — this is most of the flavour, do not rush it.',
-      'Garlic, ginger and curry powder in, one minute.',
-      'Chicken in to colour, then coconut milk and the potato.',
-      'Simmer uncovered until the sauce thickens and the potato is soft, around twenty-five minutes. Rice alongside.',
+      'Flatten the chicken to an even thickness so it cooks through before the crumb burns.',
+      'Flour, then beaten egg, then panko, pressing it on firmly.',
+      'Shallow fry in a centimetre of oil, three or four minutes a side, until deep gold.',
+      'Rest it on a rack, not paper. Shredded raw cabbage and rice alongside.',
+    ],
+  },
+  {
+    id: 'gyudon', name: 'Beef and onion donburi', cuisine: 'Japanese', minutes: 20, serves: 2,
+    blurb: 'Sweet-salty beef over rice, twenty minutes flat.',
+    needs: [ing('Beef', ['beef', 'sliced beef', 'steak']), ONION, SOY, MIRIN, SUGAR, GINGER, RICE, SPRING, SAKE],
+    tags: ['quick', 'one-pan'],
+    steps: [
+      'Onion, soy, mirin, sake, sugar and a little water into a wide pan. Simmer until the onion is translucent.',
+      'Very thinly sliced beef in, separated as it goes.',
+      'Three minutes, no more — it toughens fast.',
+      'Over rice, with the broth spooned on, spring onion over.',
+    ],
+  },
+  {
+    id: 'agedashi-tofu', name: 'Agedashi tofu', cuisine: 'Japanese', minutes: 25, serves: 2,
+    blurb: 'Crisp outside, custard inside.',
+    needs: [TOFU, CORNFLOUR, DASHI, SOY, MIRIN, GINGER, SPRING, OIL],
+    tags: ['vegetarian'],
+    steps: [
+      'Press the tofu properly — thirty minutes under a plate. Wet tofu spits and never crisps.',
+      'Cube it, coat in cornflour, fry until pale gold on all sides.',
+      'Warm dashi, soy and mirin together into a light broth.',
+      'Tofu in a bowl, broth poured around it rather than over, grated ginger and spring onion on top.',
+    ],
+  },
+  {
+    id: 'yaki-udon', name: 'Yaki udon', cuisine: 'Japanese', minutes: 15, serves: 2,
+    blurb: 'Fatter noodles, faster dinner.',
+    needs: [ing('Udon', ['udon', 'noodles', 'thick noodles']), CABBAGE, ONION, SOY, MIRIN, OYSTER, SESAME_SEEDS, SPRING],
+    tags: ['quick', 'one-pan'],
+    steps: [
+      'Loosen the udon in hot water for a minute, drain.',
+      'Onion and cabbage in a very hot pan until they take some colour.',
+      'Noodles in, then soy, mirin and oyster sauce. Toss until everything is glossy.',
+      'Sesame seeds and spring onion.',
+    ],
+  },
+
+  /* ---------------- Italian ---------------- */
+  {
+    id: 'aglio-e-olio', name: 'Spaghetti aglio e olio', cuisine: 'Italian', minutes: 15, serves: 2,
+    blurb: 'Four things. Gets ruined by rushing the garlic.',
+    needs: [PASTA, GARLIC, OLIVE_OIL, CHILLI_OPT, PARMESAN, SALT],
+    tags: ['quick', 'vegetarian'],
+    steps: [
+      'Pasta into water as salty as a good soup. Keep a mug of it before draining.',
+      'Sliced garlic into COLD oil, then low heat. Let it turn the palest gold over several minutes.',
+      'Chilli in at the end for thirty seconds.',
+      'Drained pasta in with a good splash of the cooking water, toss hard until the oil and water turn creamy.',
+    ],
+  },
+  {
+    id: 'cacio-e-pepe', name: 'Cacio e pepe', cuisine: 'Italian', minutes: 15, serves: 2,
+    blurb: 'Cheese, pepper, pasta water. Technique, not ingredients.',
+    needs: [PASTA, PARMESAN, PEPPER, SALT],
+    tags: ['quick', 'vegetarian'],
+    steps: [
+      'Toast a heaped teaspoon of cracked pepper in a dry pan until it smells of pepper rather than dust.',
+      'Cook the pasta in less water than usual so the water is starchier.',
+      'Mix the grated cheese with a little warm pasta water into a paste OFF the heat.',
+      'Pasta and pepper into the paste, tossing, adding water until it coats. Heat is what makes it split — keep the pan off it.',
+    ],
+  },
+  {
+    id: 'carbonara', name: 'Carbonara', cuisine: 'Italian', minutes: 20, serves: 2,
+    blurb: 'No cream. It never had cream.',
+    needs: [PASTA, EGGS, PANCETTA, PARMESAN, PEPPER],
+    tags: [],
+    steps: [
+      'Render the pancetta slowly from a cold pan so the fat comes out and the meat crisps.',
+      'Beat whole eggs and yolks with a lot of grated cheese and pepper into a paste.',
+      'Drained pasta into the pancetta pan, OFF the heat, tossed in the fat.',
+      'Egg mixture in, tossing constantly, loosening with pasta water. If the pan is on the heat you are making an omelette.',
+    ],
+  },
+  {
+    id: 'pasta-pomodoro', name: 'Pasta pomodoro', cuisine: 'Italian', minutes: 30, serves: 2,
+    blurb: 'A tin of tomatoes, treated with respect.',
+    needs: [PASTA, TOMATO, GARLIC, OLIVE_OIL, BASIL, PARMESAN, SALT],
+    tags: ['vegetarian'],
+    steps: [
+      'Whole garlic cloves gently in olive oil until fragrant, then fish them out or crush them in.',
+      'Tomatoes in, crushed by hand. Simmer twenty minutes — it should darken and thicken, not stay bright red.',
+      'Season properly and much later than you think.',
+      'Pasta finished in the sauce, basil torn in off the heat, cheese at the table.',
+    ],
+  },
+  {
+    id: 'risotto-bianco', name: 'Risotto bianco', cuisine: 'Italian', minutes: 35, serves: 2,
+    blurb: 'The base every other risotto is built on.',
+    needs: [ARBORIO, ONION, BUTTER, PARMESAN, STOCK, WHITE_WINE, OLIVE_OIL],
+    tags: ['vegetarian'],
+    steps: [
+      'Onion very finely diced, softened in butter and oil without colouring. Ten minutes.',
+      'Rice in, stirred until the grains look translucent at the edges. Wine in, let it disappear.',
+      'Hot stock a ladle at a time, stirring, only adding more when the last is nearly gone. Eighteen minutes.',
+      'Off the heat, cold butter and cheese beaten in hard. Rest two minutes — it should spread slowly on the plate.',
+    ],
+  },
+  {
+    id: 'puttanesca', name: 'Puttanesca', cuisine: 'Italian', minutes: 25, serves: 2,
+    blurb: 'Salty, sharp, and entirely from tins and jars.',
+    needs: [PASTA, TOMATO, ANCHOVY, GARLIC, CHILLI_OPT, OLIVE_OIL, ing('Olives', ['olives', 'capers'], { optional: true })],
+    tags: ['storecupboard'],
+    steps: [
+      'Anchovies into warm oil with the garlic and let them melt completely — they stop being fish and become salt.',
+      'Chilli, then tomatoes. Simmer fifteen minutes.',
+      'Olives and capers late so they stay punchy.',
+      'Toss with the pasta and a little of its water. It will not need salt.',
+    ],
+  },
+  {
+    id: 'pasta-fagioli', name: 'Pasta e fagioli', cuisine: 'Italian', minutes: 30, serves: 3,
+    blurb: 'Beans and pasta. Peasant food, and better than most restaurant food.',
+    needs: [PASTA, CANNELLINI, TOMATO, GARLIC, ONION, OLIVE_OIL, PARMESAN, ing('Rosemary', ['rosemary'], { optional: true })],
+    tags: ['vegetarian', 'storecupboard'],
+    steps: [
+      'Onion and garlic softened slowly in a good amount of olive oil.',
+      'Half the beans in whole, half crushed — the crushed ones thicken it.',
+      'Tomato and water in, simmer fifteen minutes with the rosemary.',
+      'Small pasta cooked straight in the soup so the starch stays. It should be thick enough to stand a spoon in.',
+    ],
+  },
+  {
+    id: 'caprese-eggs', name: 'Eggs in tomato with mozzarella', cuisine: 'Italian', minutes: 20, serves: 2,
+    blurb: 'Breakfast that behaves like dinner.',
+    needs: [EGGS, TOMATO, MOZZARELLA, GARLIC, OLIVE_OIL, BASIL, BREAD],
+    tags: ['one-pan', 'vegetarian'],
+    steps: [
+      'Garlic in olive oil, tomatoes in, simmer down to a thick sauce and season it hard.',
+      'Make wells and crack the eggs in. Torn mozzarella around them.',
+      'Lid on, low heat, until the whites are set and the yolks are not.',
+      'Basil, and bread for the bottom of the pan.',
+    ],
+  },
+
+  /* ---------------- French ---------------- */
+  {
+    id: 'french-omelette', name: 'French omelette', cuisine: 'French', minutes: 8, serves: 1,
+    blurb: 'Pale, rolled, and slightly underdone. The hardest easy thing.',
+    needs: [EGGS, BUTTER, SALT, GRUYERE],
+    tags: ['quick', 'vegetarian'],
+    steps: [
+      'Beat three eggs thoroughly with salt — no milk, no water.',
+      'Foaming butter in a non-stick pan on medium. Eggs in, then stir constantly with a fork while shaking the pan.',
+      'When it is the texture of loose curds, stop. Spread it flat, cheese down the middle.',
+      'Roll it out of the pan onto the plate. It should be blonde, not brown, and just barely set.',
+    ],
+  },
+  {
+    id: 'croque-monsieur', name: 'Croque monsieur', cuisine: 'French', minutes: 25, serves: 2,
+    blurb: 'A cheese toastie that went to finishing school.',
+    needs: [BREAD, HAM, GRUYERE, BUTTER, FLOUR, MILK, DIJON, PEPPER],
+    tags: [],
+    steps: [
+      'Make a thick béchamel: butter and flour cooked two minutes, milk in slowly, whisked until it coats a spoon. Dijon and pepper in.',
+      'Butter the bread on the outside. Ham and cheese inside, a smear of béchamel too.',
+      'Fry both sides in butter until deep gold.',
+      'The rest of the béchamel over the top with more cheese, then under a hot grill until it blisters.',
+    ],
+  },
+  {
+    id: 'soupe-oignon', name: 'Onion soup', cuisine: 'French', minutes: 75, serves: 4,
+    blurb: 'Almost entirely onions. The hour is not optional.',
+    needs: [ONION, BUTTER, STOCK, BREAD, GRUYERE, THYME, WHITE_WINE, FLOUR],
+    tags: [],
+    steps: [
+      'Slice a lot of onions thinly. Butter, low heat, lid on for fifteen minutes to sweat them.',
+      'Lid off, and now the real work: forty-five minutes of occasional stirring until they are dark, jammy and sweet. Any less and it will taste thin.',
+      'A spoon of flour, then wine to deglaze, then stock and thyme. Twenty minutes.',
+      'Toasted bread on top, cheese over, under the grill until it bubbles.',
+    ],
+  },
+  {
+    id: 'gratin-dauphinois', name: 'Potato gratin', cuisine: 'French', minutes: 75, serves: 4,
+    blurb: 'Potatoes, cream, garlic. Nothing else, and nothing else needed.',
+    needs: [POTATO, CREAM, GARLIC, BUTTER, SALT, GRUYERE, ing('Nutmeg', ['nutmeg'], { optional: true })],
+    tags: ['vegetarian'],
+    steps: [
+      'Rub the dish with a cut garlic clove and butter it well.',
+      'Slice the potatoes thin — a mandoline if you have one. Do NOT rinse them; the starch is what thickens it.',
+      'Layer with cream, salt and a scrape of nutmeg between each layer.',
+      'Covered for forty minutes, uncovered with cheese for twenty more, until a knife slides straight through.',
+    ],
+  },
+  {
+    id: 'poulet-moutarde', name: 'Mustard chicken', cuisine: 'French', minutes: 40, serves: 3,
+    blurb: 'One pan, and the sauce makes itself.',
+    needs: [CHICKEN, DIJON, CREAM, ONION, GARLIC, WHITE_WINE, THYME, BUTTER],
+    tags: ['one-pan'],
+    steps: [
+      'Brown the chicken properly on both sides and lift it out. The brown bits in the pan are the sauce.',
+      'Onion and garlic into the same pan, softened in the fat.',
+      'Wine in to lift everything off the base, reduce by half.',
+      'Cream and a heaped spoon of mustard in, chicken back, twenty minutes at a bare simmer. Do not boil it or the sauce splits.',
+    ],
+  },
+  {
+    id: 'lentilles', name: 'Lentils with mustard and thyme', cuisine: 'French', minutes: 40, serves: 3,
+    blurb: 'Cheap, meatless, and quietly excellent.',
+    needs: [LENTILS, CARROT, ONION, GARLIC, DIJON, THYME, VINEGAR_W, OLIVE_OIL],
+    tags: ['vegetarian'],
+    steps: [
+      'Finely dice carrot, onion and garlic and sweat them slowly in olive oil until sweet.',
+      'Lentils in, water to cover by two fingers, thyme. Simmer twenty-five minutes — salt only near the end or the skins toughen.',
+      'Whisk mustard and vinegar together and stir it through off the heat.',
+      'It should be loose, not soupy. Good with an egg on top.',
+    ],
+  },
+  {
+    id: 'oeufs-cocotte', name: 'Baked eggs with cream', cuisine: 'French', minutes: 20, serves: 2,
+    blurb: 'Eggs, cream, an oven, ten minutes of attention.',
+    needs: [EGGS, CREAM, BUTTER, GRUYERE, BREAD, THYME],
+    tags: ['quick', 'vegetarian'],
+    steps: [
+      'Butter two ramekins. A spoon of cream in the bottom of each.',
+      'Crack an egg into each, another spoon of cream over, cheese and thyme on top.',
+      'Into a roasting tin, boiling water halfway up the sides, into a hot oven.',
+      'Twelve minutes — whites set, yolks liquid. Toast cut into soldiers.',
+    ],
+  },
+  {
+    id: 'sauce-tomate-francaise', name: 'Steak with pan sauce', cuisine: 'French', minutes: 20, serves: 2,
+    blurb: 'The sauce takes three minutes and changes everything.',
+    needs: [ing('Steak', ['steak', 'beef']), BUTTER, SHALLOT, DIJON, CREAM, WHITE_WINE, PEPPER, SALT],
+    tags: ['quick', 'one-pan'],
+    steps: [
+      'Steak dry, salted hard, into a very hot pan. Do not move it.',
+      'Rest it somewhere warm — this is not optional, it is half the result.',
+      'Shallot into the same pan, wine in to deglaze, reduced almost away.',
+      'Cream and mustard in, bubbled for a minute, cold butter beaten in off the heat. Resting juices back into the sauce.',
     ],
   },
 ]
-
 /** Every distinct non-staple ingredient across the library, for the shopping hand-off. */
 export function allIngredients(recipes: Recipe[] = RECIPES): Ingredient[] {
   const seen = new Map<string, Ingredient>()

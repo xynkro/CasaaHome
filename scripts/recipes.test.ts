@@ -7,7 +7,7 @@
  * tested, along with the substring trap that made "rice vinegar" look like rice.
  */
 import {
-  RECIPES, buildPantry, matchRecipe, matchAll, mentions, norm, allIngredients,
+  RECIPES, CUISINES, buildPantry, matchRecipe, matchAll, mentions, norm, allIngredients,
   type PantryItem,
 } from '../src/lib/recipes'
 
@@ -35,6 +35,11 @@ console.log('recipes: word matching')
   ok('does not match a word fragment', !mentions('chocolate', 'late'))
   ok('does not match across a missing word', !mentions('soy bean sauce', 'soy sauce'))
   ok('empty inputs are safe', !mentions('', 'rice') && !mentions('rice', '') && norm(null) === '')
+  // Without accent folding "Gruyère" becomes "gruy re" and the ingredient can
+  // never be found — a silent miss, not a visible error.
+  ok('folds accents', norm('Gruyère') === 'gruyere' && norm('crème fraîche') === 'creme fraiche')
+  ok('an accented item is still found',
+    buildPantry([item('Gruyère', 1)], []).have.some(h => mentions(h, 'gruyere')))
 }
 
 console.log('recipes: the pantry')
@@ -89,14 +94,14 @@ console.log('recipes: matching a real recipe')
 
 console.log('recipes: staples')
 {
-  const r = byId('scrambled-eggs-toast')
-  const noSalt = buildPantry([item('Eggs', 6), item('Bread', 1), item('Butter', 1), item('Fresh milk 1L', 1)], [])
+  const r = byId('french-omelette')
+  const noSalt = buildPantry([item('Eggs', 6), item('Butter', 1), item('Gruyere', 1)], [])
   const m = matchRecipe(r, noSalt)
   ok('an uncatalogued staple is assumed present', m.canCook,
     `missing ${m.missing.map(x => x.name).join(', ')}`)
 
   const saltOut = buildPantry(
-    [item('Eggs', 6), item('Bread', 1), item('Butter', 1), item('Fresh milk 1L', 1), item('Sea salt', 0)], [])
+    [item('Eggs', 6), item('Butter', 1), item('Gruyere', 1), item('Sea salt', 0)], [])
   const m2 = matchRecipe(r, saltOut)
   ok('a staple the house says it has run out of is still not blocking', m2.canCook)
   ok('but it is reported', m2.staplesOut.some(x => x.name === 'Salt'),
@@ -156,6 +161,38 @@ console.log('recipes: the library itself')
     RECIPES.every(r => r.needs.some(i => !i.staple && !i.optional)))
   ok('allIngredients dedupes', allIngredients().length < RECIPES.reduce((a, r) => a + r.needs.length, 0))
   ok('minutes and serves are sane', RECIPES.every(r => r.minutes > 0 && r.minutes < 180 && r.serves > 0))
+  ok('every recipe belongs to one of the five cuisines',
+    RECIPES.every(r => CUISINES.includes(r.cuisine)),
+    [...new Set(RECIPES.map(r => r.cuisine))].filter(c => !CUISINES.includes(c)).join(', '))
+
+  // Each cuisine needs a way in. Peranakan and French especially can run to
+  // twelve ingredients a dish, and a cuisine whose every recipe is "nine short"
+  // is decoration rather than a feature.
+  for (const c of CUISINES) {
+    const inCuisine = RECIPES.filter(r => r.cuisine === c)
+    ok(`${c} has enough recipes`, inCuisine.length >= 5, `${inCuisine.length}`)
+    const blockers = (r: typeof RECIPES[number]) => r.needs.filter(i => !i.staple && !i.optional).length
+    const easiest = Math.min(...inCuisine.map(blockers))
+    ok(`${c} has a low-barrier way in`, easiest <= 5,
+      `cheapest dish still needs ${easiest} non-staple ingredients`)
+  }
+}
+
+console.log('recipes: a realistic house reaches every cuisine')
+{
+  // Rice, eggs, oil, garlic, soy, pasta, onion — an unremarkable kitchen.
+  const p = buildPantry([
+    item('Jasmine rice 5kg', 2), item('Eggs', 6), item('Cooking oil 2L', 1),
+    item('Garlic', 1), item('Spaghetti', 2), item('Onion', 3), item('Butter', 1),
+    item('Parmesan', 1), item('Soy sauce', 1),
+  ], ['#spring onion #chilli'])
+  const ms = matchAll(RECIPES, p)
+  for (const c of CUISINES) {
+    const best = ms.filter(m => m.recipe.cuisine === c)
+      .reduce((a, b) => (a && a.missing.length <= b.missing.length ? a : b))
+    ok(`${c} is within reach of an ordinary kitchen`, best.missing.length <= 3,
+      `closest is ${best.recipe.name}, ${best.missing.length} short`)
+  }
 }
 
 if (fail) { console.error(`${fail} recipe checks failed`); process.exit(1) }

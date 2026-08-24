@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../store'
-import { RECIPES, buildPantry, matchAll, type Match, type Ingredient } from '../lib/recipes'
+import { RECIPES, CUISINES, buildPantry, matchAll, type Match, type Ingredient, type Cuisine } from '../lib/recipes'
 import { Sheet, Empty } from '../ui/primitives'
 
 /**
@@ -21,6 +21,7 @@ export default function CookView() {
   const loaded = useStore(s => s.loaded)
   const locationsLoaded = useStore(s => s.locationsLoaded)
   const [filter, setFilter] = useState<Filter>('all')
+  const [cuisine, setCuisine] = useState<Cuisine | null>(null)
   const [open, setOpen] = useState<Match | null>(null)
 
   const pantry = useMemo(
@@ -38,14 +39,15 @@ export default function CookView() {
   const close = matches.filter(m => !m.canCook && m.missing.length <= 2)
 
   const shown = useMemo(() => {
+    const base = cuisine ? matches.filter(m => m.recipe.cuisine === cuisine) : matches
     switch (filter) {
-      case 'now': return cookable
-      case 'close': return close
-      case 'quick': return matches.filter(m => m.recipe.minutes <= 15)
-      case 'veg': return matches.filter(m => m.recipe.tags.includes('vegetarian'))
-      default: return matches
+      case 'now': return base.filter(m => m.canCook)
+      case 'close': return base.filter(m => !m.canCook && m.missing.length <= 2)
+      case 'quick': return base.filter(m => m.recipe.minutes <= 15)
+      case 'veg': return base.filter(m => m.recipe.tags.includes('vegetarian'))
+      default: return base
     }
-  }, [filter, matches, cookable, close])
+  }, [filter, cuisine, matches])
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
@@ -75,7 +77,29 @@ export default function CookView() {
         <Tally value={RECIPES.length} label="Recipes" tone="flat" />
       </div>
 
+      {/* Cuisine first — it is how anyone actually decides what to eat. */}
       <div className="scroll-thin mt-3 flex gap-1.5 overflow-x-auto pb-1">
+        <button
+          onClick={() => setCuisine(null)}
+          className={`chip shrink-0 ${cuisine === null
+            ? 'border-brass-500/50 bg-brass-400/12 text-brass-300'
+            : 'border-ink-600 bg-ink-800 text-ink-400'}`}
+        >All cuisines</button>
+        {CUISINES.map(c => {
+          const n = matches.filter(m => m.recipe.cuisine === c && m.canCook).length
+          return (
+            <button
+              key={c}
+              onClick={() => setCuisine(cuisine === c ? null : c)}
+              className={`chip shrink-0 ${cuisine === c
+                ? 'border-brass-500/50 bg-brass-400/12 text-brass-300'
+                : 'border-ink-600 bg-ink-800 text-ink-400'}`}
+            >{c}{n > 0 && <span className="tnum ml-1 text-mark-leaf">{n}</span>}</button>
+          )
+        })}
+      </div>
+
+      <div className="scroll-thin mt-1.5 flex gap-1.5 overflow-x-auto pb-1">
         {([['all', 'Everything'], ['now', 'Ready now'], ['close', 'Nearly there'],
            ['quick', 'Under 15 min'], ['veg', 'Vegetarian']] as [Filter, string][]).map(([k, label]) => (
           <button
@@ -148,14 +172,25 @@ function RecipeCard({ match, onOpen }: { match: Match; onOpen: () => void }) {
           {canCook ? 'Ready' : `${missing.length} short`}
         </span>
       </div>
+      {/* Every fixed part refuses to break: without shrink-0 the flex children
+          were squeezed by the long "need …" list and "12 min" wrapped onto two
+          lines as "12" and "min". Only the shortfall truncates. */}
       <div className="mt-1.5 flex items-center gap-1.5 text-micro text-ink-500">
-        <span>{recipe.minutes} min</span>
-        <span>·</span>
-        <span>serves {recipe.serves}</span>
+        <span className="shrink-0 whitespace-nowrap font-medium text-ink-400">{recipe.cuisine}</span>
+        <span className="shrink-0">·</span>
+        <span className="shrink-0 whitespace-nowrap">{recipe.minutes} min</span>
+        {canCook && (
+          <>
+            <span className="shrink-0">·</span>
+            <span className="shrink-0 whitespace-nowrap">serves {recipe.serves}</span>
+          </>
+        )}
         {!canCook && (
           <>
-            <span>·</span>
-            <span className="truncate text-mark-ochre">need {missing.map(i => i.name.toLowerCase()).join(', ')}</span>
+            <span className="shrink-0">·</span>
+            <span className="min-w-0 flex-1 truncate text-mark-ochre">
+              need {missing.map(i => i.name.toLowerCase()).join(', ')}
+            </span>
           </>
         )}
       </div>
@@ -208,7 +243,7 @@ function RecipeSheet({
       }
     >
       <p className="text-mini leading-relaxed text-ink-400">{recipe.blurb}</p>
-      <div className="mt-1 text-micro text-ink-500">{recipe.minutes} min · serves {recipe.serves}</div>
+      <div className="mt-1 text-micro text-ink-500">{recipe.cuisine} · {recipe.minutes} min · serves {recipe.serves}</div>
 
       <div className="panel mt-4 overflow-hidden">
         <header className="border-b border-ink-700 px-3 py-2 text-micro font-semibold uppercase tracking-wider text-ink-300">
