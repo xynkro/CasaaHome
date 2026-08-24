@@ -8,6 +8,7 @@ import { ItemRow, SectionCard } from '../ui/ItemRow'
 import VerifySweep from './VerifySweep'
 import SnapPlace from './SnapPlace'
 import RoomBoard from './RoomBoard'
+import { cookableCount } from './CookView'
 import type { StockStatus } from '../types'
 
 export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => void }) {
@@ -17,6 +18,7 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
   const settings = useStore(s => s.settings)
   const events = useStore(s => s.events)
   const loaded = useStore(s => s.loaded)
+  const locationsLoaded = useStore(s => s.locationsLoaded)
   const user = useStore(s => s.user)
   const [sweepOpen, setSweepOpen] = useState(false)
   const [snapping, setSnapping] = useState(false)
@@ -43,6 +45,11 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
   )
 
   const stale = useMemo(() => live.filter(i => isStale(i, settings)), [live, settings])
+
+  const cook = useMemo(
+    () => cookableCount(live, locations.map(l => l.contents)),
+    [live, locations],
+  )
 
   // A room with a photo is worth a tile; one without is worth a chip.
   const shotRooms = useMemo(() => plan.rooms.filter(r => r.photoUrl), [plan.rooms])
@@ -160,6 +167,31 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
             </div>
           </SectionCard>
         )}
+
+        {/* Dinner is a more useful thing to be asked on the way home than
+            anything else the dashboard knows. */}
+        <Link
+          to="/cook"
+          className="panel flex w-full items-center gap-3 px-3 py-3 text-left transition active:bg-ink-850"
+        >
+          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-brass-400/12 text-lg">🍳</div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium text-ink-200">
+              {!locationsLoaded ? 'What can we cook?' : cook.ready > 0
+                ? `${cook.ready} ${cook.ready === 1 ? 'thing' : 'things'} you can cook right now`
+                : 'What can we cook?'}
+            </div>
+            <div className="truncate text-mini text-ink-400">
+              {!locationsLoaded ? 'Worked out from what is in the cupboards'
+                : cook.ready > 0 && cook.close > 0
+                ? `and ${cook.close} more you are one or two short of`
+                : cook.close > 0
+                  ? `${cook.close} ${cook.close === 1 ? 'recipe is' : 'recipes are'} within a couple of ingredients`
+                  : 'Worked out from what is in the cupboards'}
+            </div>
+          </div>
+          <span className="text-ink-500">→</span>
+        </Link>
 
         <SectionCard
           title="Your rooms"

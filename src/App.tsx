@@ -9,6 +9,7 @@ import ShoppingView from './views/ShoppingView'
 import SettingsView from './views/SettingsView'
 import ItemSheet from './views/ItemSheet'
 import SnapPlace from './views/SnapPlace'
+import CookView from './views/CookView'
 import { Empty } from './ui/primitives'
 
 /**
@@ -161,6 +162,7 @@ export default function App() {
           <Route path="/search" element={<SearchView onOpenItem={setOpenItem} />} />
           <Route path="/places" element={<LocationsView onOpenItem={setOpenItem} />} />
           <Route path="/shop" element={<ShoppingView onOpenItem={setOpenItem} />} />
+          <Route path="/cook" element={<CookView />} />
           <Route path="/settings" element={<SettingsView />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

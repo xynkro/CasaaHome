@@ -41,6 +41,9 @@ interface Store {
   shopping: ShoppingState
   events: StockEvent[]
   loaded: boolean
+  /** Locations specifically. The recipe matcher reads cupboard tags, so it
+   *  must not answer "you have nothing" while those are still in flight. */
+  locationsLoaded: boolean
   error: string | null
 
   subscribe: () => () => void
@@ -84,6 +87,7 @@ export const useStore = create<Store>((set, get) => ({
   shopping: { checked: {}, manual: [] },
   events: [],
   loaded: false,
+  locationsLoaded: false,
   error: null,
 
   signIn: async () => {
@@ -106,7 +110,7 @@ export const useStore = create<Store>((set, get) => ({
 
   signOutNow: async () => {
     await signOut(auth)
-    set({ items: [], locations: [], loaded: false, accessDenied: false })
+    set({ items: [], locations: [], loaded: false, locationsLoaded: false, accessDenied: false })
   },
 
   subscribe: () => {
@@ -123,8 +127,8 @@ export const useStore = create<Store>((set, get) => ({
         const msg = (e as Error).message ?? String(e)
         // Rules reject anyone not on the allowlist — surface that as a clear
         // "ask the household owner to add you" rather than a raw error.
-        if (/permission|insufficient/i.test(msg)) set({ accessDenied: true, loaded: true })
-        else set({ error: msg, loaded: true })
+        if (/permission|insufficient/i.test(msg)) set({ accessDenied: true, loaded: true, locationsLoaded: true })
+        else set({ error: msg, loaded: true, locationsLoaded: true })
       }
 
       dataUnsubs.push(onSnapshot(collection(db, 'items'), snap => {
@@ -133,7 +137,10 @@ export const useStore = create<Store>((set, get) => ({
       }, fail))
 
       dataUnsubs.push(onSnapshot(collection(db, 'locations'), snap => {
-        set({ locations: snap.docs.map(d => ({ id: d.id, ...(d.data() as object) } as StorageLocation)) })
+        set({
+          locations: snap.docs.map(d => ({ id: d.id, ...(d.data() as object) } as StorageLocation)),
+          locationsLoaded: true,
+        })
       }, fail))
 
       dataUnsubs.push(onSnapshot(doc(db, 'house', 'plan'), snap => {

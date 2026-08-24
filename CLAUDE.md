@@ -116,6 +116,40 @@ and a mis-swipe there would destroy the thing you were about to buy. Swiping is
 wired only where you are curating what exists — Search, the Places tree, unfiled
 items, and inside a cupboard.
 
+## What can we cook
+
+`src/lib/recipes.ts` is a fixed library of 18 recipes plus the matcher, pure and
+testable; `src/views/CookView.tsx` is the screen, reachable from a dashboard
+card at `/cook`.
+
+**Deliberately not generated.** The client bundle must never carry an API key
+(hard rule 2), so a model call would have to go through the hourly Action — and
+"what can I cook" is asked standing in the kitchen at 7pm, which an hourly job
+cannot answer. A fixed library is also testable, and matching is the part that
+can be wrong.
+
+Three things the matcher gets right and are easy to break:
+
+- **Cupboard tags count as stock.** Most of this house is photographed and
+  tagged rather than itemised, so "#eggs" on the fridge is often the only record
+  that there are eggs. Ignore location `contents` and the feature answers "no"
+  to everything.
+- **Staples are assumed present** unless a tracked item says they ran out.
+  Nobody catalogues salt, and blocking on it buries every recipe behind a pantry
+  entry nobody will make.
+- **Matching is whole-word, not substring** (`mentions`). Substring matching had
+  "rice" finding "rice vinegar" and claiming a condiment was dinner.
+
+Missing ingredients split into `missingTracked` (an item exists at zero, so it
+is **already** on the shopping list — offering to add it again just creates a
+second "Rice" beside "Jasmine rice 5kg") and `missingUnknown` (no record at all,
+worth creating at qty 0 so it flows onto the list through the normal route).
+
+`CookView` waits for `loaded && locationsLoaded` before rendering anything.
+Every number on that screen is a claim about what the house has, and an empty
+store renders as "you are short of everything", confidently, a moment before it
+says something else.
+
 ## Gotchas
 
 - Room photos upload to the `locations/` Storage folder, not a `rooms/` one, so
