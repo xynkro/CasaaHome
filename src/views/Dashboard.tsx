@@ -46,6 +46,18 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
 
   const stale = useMemo(() => live.filter(i => isStale(i, settings)), [live, settings])
 
+  // Events outlive the items they describe: delete an item and its history
+  // stays in the feed pointing at nothing. Resolving first means the card is
+  // gated on rows that will actually render, rather than appearing as a
+  // "Recent activity" heading with nothing under it.
+  const activity = useMemo(() => {
+    const byId = new Map(items.map(i => [i.id, i]))
+    return events
+      .map(ev => ({ ev, item: byId.get(ev.itemId) }))
+      .filter((e): e is { ev: typeof events[number]; item: typeof items[number] } => !!e.item)
+      .slice(0, 8)
+  }, [events, items])
+
   const cook = useMemo(
     () => cookableCount(live, locations.map(l => l.contents)),
     [live, locations],
@@ -257,12 +269,10 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
           )}
         </SectionCard>
 
-        {events.length > 0 && (
+        {activity.length > 0 && (
           <SectionCard title="Recent activity">
             <ul className="divide-y divide-ink-700/60">
-              {events.slice(0, 8).map(ev => {
-                const item = items.find(i => i.id === ev.itemId)
-                if (!item) return null
+              {activity.map(({ ev, item }) => {
                 const up = ev.delta > 0
                 return (
                   <li key={ev.id} className="flex items-center gap-3 px-3 py-2 text-xs">
