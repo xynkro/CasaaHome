@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../store'
-import { RECIPES, CUISINES, buildPantry, matchAll, type Match, type Ingredient, type Cuisine } from '../lib/recipes'
+import {
+  RECIPES, CUISINES, buildPantry, matchAll, youtubeSearchUrl, webSearchUrl,
+  type Match, type Ingredient, type Cuisine,
+} from '../lib/recipes'
 import { Sheet, Empty } from '../ui/primitives'
 
 /**
@@ -277,6 +280,23 @@ function RecipeSheet({
           out. The recipe assumes you have some.
         </p>
       )}
+
+      {/* A search rather than a chosen video: nobody here has watched these, and
+          a hand-picked link would be either invented or rotting. */}
+      <div className="mt-4 flex gap-2">
+        <a
+          href={youtubeSearchUrl(recipe)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-ghost flex-1 text-mini"
+        >Watch it made ↗</a>
+        <a
+          href={webSearchUrl(recipe)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-ghost flex-1 text-mini"
+        >Other recipes ↗</a>
+      </div>
 
       <div className="mt-4">
         <div className="text-micro font-semibold uppercase tracking-wider text-ink-500">Method</div>

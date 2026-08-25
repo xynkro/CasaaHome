@@ -154,6 +154,14 @@ Three things the matcher gets right and are easy to break:
 - **Chilli exists twice on purpose** (`CHILLI`, `CHILLI_OPT`). It is the point
   of a sambal and a garnish on a fried egg; one constant cannot be both.
 
+Each recipe links out to **a YouTube search, never a chosen video**
+(`youtubeSearchUrl`). Curating forty specific links means either inventing them,
+which produces confident 404s, or verifying them and then re-verifying forever
+as channels delete things. A search URL cannot rot and improves over time.
+`Recipe.search` overrides the query where the card's English title is a poor
+search term — "gyudon" finds cooking videos, "beef and onion donburi" mostly
+finds translations. The tests assert no link ever encodes `/watch` or `youtu.be`.
+
 Missing ingredients split into `missingTracked` (an item exists at zero, so it
 is **already** on the shopping list — offering to add it again just creates a
 second "Rice" beside "Jasmine rice 5kg") and `missingUnknown` (no record at all,

@@ -8,6 +8,7 @@
  */
 import {
   RECIPES, CUISINES, buildPantry, matchRecipe, matchAll, mentions, norm, allIngredients,
+  videoQuery, youtubeSearchUrl, webSearchUrl,
   type PantryItem,
 } from '../src/lib/recipes'
 
@@ -193,6 +194,45 @@ console.log('recipes: a realistic house reaches every cuisine')
     ok(`${c} is within reach of an ordinary kitchen`, best.missing.length <= 3,
       `closest is ${best.recipe.name}, ${best.missing.length} short`)
   }
+}
+
+console.log('recipes: looking one up')
+{
+  // The rule that matters: these are SEARCHES. A hand-picked video id would be
+  // either invented — a confident 404 — or something that rots when a channel
+  // deletes it. Nothing here should ever encode a specific video.
+  const bad = RECIPES.filter(r => {
+    const u = youtubeSearchUrl(r)
+    return u.includes('/watch') || u.includes('youtu.be') || !u.includes('results?search_query=')
+  })
+  ok('no recipe links a specific video', bad.length === 0, bad.map(r => r.id).join(', '))
+
+  ok('every link is a valid absolute https URL', RECIPES.every(r => {
+    for (const u of [youtubeSearchUrl(r), webSearchUrl(r)]) {
+      try { const p = new URL(u); if (p.protocol !== 'https:') return false } catch { return false }
+    }
+    return true
+  }))
+
+  // Queries go through encodeURIComponent, so a name with a space or an accent
+  // must not produce a URL that breaks when opened.
+  const spaced = RECIPES.find(r => videoQuery(r).includes(' '))!
+  ok('spaces are encoded', !youtubeSearchUrl(spaced).includes(' ')
+    && youtubeSearchUrl(spaced).includes('%20'), youtubeSearchUrl(spaced))
+
+  ok('every query ends in "recipe"', RECIPES.every(r => videoQuery(r).endsWith(' recipe')))
+  ok('no query is empty or stubby', RECIPES.every(r => videoQuery(r).trim().length > 8))
+
+  // Where a dish has a real name, the query should use it rather than the
+  // English card title — "gyudon" finds cooking videos, "beef and onion
+  // donburi" mostly finds this kind of translation.
+  const gyudon = RECIPES.find(r => r.id === 'gyudon')!
+  ok('a dish with its own name searches by that name',
+    videoQuery(gyudon) === 'gyudon recipe', videoQuery(gyudon))
+  const gratin = RECIPES.find(r => r.id === 'gratin-dauphinois')!
+  ok('and another', videoQuery(gratin) === 'gratin dauphinois recipe', videoQuery(gratin))
+  ok('every recipe has a deliberate search term', RECIPES.every(r => !!r.search),
+    RECIPES.filter(r => !r.search).map(r => r.id).join(', '))
 }
 
 if (fail) { console.error(`${fail} recipe checks failed`); process.exit(1) }

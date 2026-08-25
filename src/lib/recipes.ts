@@ -44,6 +44,13 @@ export interface Recipe {
   id: string
   name: string
   cuisine: Cuisine
+  /**
+   * What to search for when the card's title is not the best query — usually
+   * because the dish has a real name in its own language that finds far better
+   * videos than the English description does. "gyudon" rather than "beef and
+   * onion donburi"; "gratin dauphinois" rather than "potato gratin".
+   */
+  search?: string
   blurb: string
   minutes: number
   serves: number
@@ -251,7 +258,7 @@ const VINEGAR_W = ing('Wine vinegar', ['wine vinegar', 'red wine vinegar', 'vine
 export const RECIPES: Recipe[] = [
   /* ---------------- Peranakan ---------------- */
   {
-    id: 'sambal-telur', name: 'Sambal telur', cuisine: 'Peranakan', minutes: 25, serves: 2,
+    id: 'sambal-telur', name: 'Sambal telur', cuisine: 'Peranakan', search: 'sambal telur', minutes: 25, serves: 2,
     blurb: 'Hard-boiled eggs in a proper sambal. The gateway dish.',
     needs: [EGGS, CHILLI, SHALLOT, GARLIC, BELACAN, TAMARIND, SUGAR, OIL],
     tags: ['quick'],
@@ -263,7 +270,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'nasi-goreng-belacan', name: 'Belacan fried rice', cuisine: 'Peranakan', minutes: 20, serves: 2,
+    id: 'nasi-goreng-belacan', name: 'Belacan fried rice', cuisine: 'Peranakan', search: 'nasi goreng belacan', minutes: 20, serves: 2,
     blurb: 'Fried rice with the volume turned up.',
     needs: [RICE, EGGS, BELACAN, CHILLI, SHALLOT, GARLIC, OIL, CUCUMBER],
     tags: ['quick', 'one-pan'],
@@ -275,7 +282,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'ayam-pongteh', name: 'Ayam pongteh', cuisine: 'Peranakan', minutes: 60, serves: 4,
+    id: 'ayam-pongteh', name: 'Ayam pongteh', cuisine: 'Peranakan', search: 'ayam pongteh nyonya', minutes: 60, serves: 4,
     blurb: 'Chicken braised in fermented bean paste. Better the next day.',
     needs: [CHICKEN, POTATO, SHALLOT, GARLIC, PALM_SUGAR, SOY, OIL, ing('Taucheo', ['taucheo', 'fermented bean paste', 'miso'])],
     tags: [],
@@ -287,7 +294,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'laksa-quick', name: 'Weeknight laksa', cuisine: 'Peranakan', minutes: 35, serves: 2,
+    id: 'laksa-quick', name: 'Weeknight laksa', cuisine: 'Peranakan', search: 'nyonya laksa', minutes: 35, serves: 2,
     blurb: 'A short-cut version that still tastes like the real thing.',
     needs: [RICE_NOODLES, COCONUT, PRAWNS, CHILLI, SHALLOT, LEMONGRASS, TURMERIC, BELACAN, CANDLENUT, GALANGAL, LAKSA_LEAF, BEANSPROUTS, EGGS],
     tags: [],
@@ -299,7 +306,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'assam-fish', name: 'Assam fish', cuisine: 'Peranakan', minutes: 30, serves: 3,
+    id: 'assam-fish', name: 'Assam fish', cuisine: 'Peranakan', search: 'assam pedas fish', minutes: 30, serves: 3,
     blurb: 'Sour, hot, and cuts through a heavy day.',
     needs: [ing('Fish', ['fish', 'fish fillet', 'snapper', 'mackerel']), TAMARIND, CHILLI, SHALLOT, BELACAN, LEMONGRASS, TURMERIC, TOMATO, SUGAR],
     tags: [],
@@ -311,7 +318,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'chap-chye', name: 'Chap chye', cuisine: 'Peranakan', minutes: 40, serves: 4,
+    id: 'chap-chye', name: 'Chap chye', cuisine: 'Peranakan', search: 'nyonya chap chye', minutes: 40, serves: 4,
     blurb: 'The braised cabbage dish that turns up at every Peranakan table.',
     needs: [CABBAGE, CARROT, TOFU, DRIED_SHRIMP, GARLIC, SHALLOT, SOY, ing('Taucheo', ['taucheo', 'fermented bean paste', 'miso']), ing('Glass noodles', ['glass noodles', 'tang hoon', 'vermicelli'], { optional: true })],
     tags: ['vegetarian-ish'],
@@ -323,7 +330,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'sambal-kangkong', name: 'Sambal green vegetable', cuisine: 'Peranakan', minutes: 12, serves: 2,
+    id: 'sambal-kangkong', name: 'Sambal green vegetable', cuisine: 'Peranakan', search: 'sambal kangkong', minutes: 12, serves: 2,
     blurb: 'Ninety seconds of cooking, once the paste is made.',
     needs: [CHOY, CHILLI, SHALLOT, GARLIC, BELACAN, OIL, DRIED_SHRIMP],
     tags: ['quick', 'one-pan'],
@@ -336,7 +343,7 @@ export const RECIPES: Recipe[] = [
   },
 
   {
-    id: 'curry-kapitan', name: 'Curry kapitan', cuisine: 'Peranakan', minutes: 50, serves: 4,
+    id: 'curry-kapitan', name: 'Curry kapitan', cuisine: 'Peranakan', search: 'kapitan curry nyonya', minutes: 50, serves: 4,
     blurb: 'The Nyonya chicken curry — lighter and sharper than the Indian ones.',
     needs: [CHICKEN, COCONUT, CURRY_POWDER, SHALLOT, GARLIC, LEMONGRASS, TURMERIC, CANDLENUT, KAFFIR, LIME, TAMARIND, OIL],
     tags: [],
@@ -350,7 +357,7 @@ export const RECIPES: Recipe[] = [
 
   /* ---------------- Chinese ---------------- */
   {
-    id: 'smashed-cucumber', name: 'Smashed cucumber', cuisine: 'Chinese', minutes: 10, serves: 2,
+    id: 'smashed-cucumber', name: 'Smashed cucumber', cuisine: 'Chinese', search: 'chinese smashed cucumber salad', minutes: 10, serves: 2,
     blurb: 'Five minutes, no cooking, and it rescues a heavy meal.',
     needs: [CUCUMBER, GARLIC, VINEGAR, SESAME, SOY, CHILLI_OPT, SUGAR, SESAME_SEEDS],
     tags: ['quick', 'vegetarian', 'no-cook'],
@@ -362,7 +369,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'egg-fried-rice', name: 'Egg fried rice', cuisine: 'Chinese', minutes: 15, serves: 2,
+    id: 'egg-fried-rice', name: 'Egg fried rice', cuisine: 'Chinese', search: 'egg fried rice', minutes: 15, serves: 2,
     blurb: 'The one that exists because there is leftover rice.',
     needs: [RICE, EGGS, OIL, SOY, SPRING, GARLIC],
     tags: ['quick', 'one-pan', 'vegetarian'],
@@ -374,7 +381,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'tomato-egg', name: 'Tomato and egg', cuisine: 'Chinese', minutes: 12, serves: 2,
+    id: 'tomato-egg', name: 'Tomato and egg', cuisine: 'Chinese', search: 'chinese tomato and egg stir fry', minutes: 12, serves: 2,
     blurb: 'What everyone actually cooks at home. Four ingredients.',
     needs: [TOMATO, EGGS, SPRING, SUGAR, OIL, RICE],
     tags: ['quick', 'one-pan', 'vegetarian'],
@@ -386,7 +393,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'fried-eggs-rice', name: 'Fried egg over rice', cuisine: 'Chinese', minutes: 8, serves: 1,
+    id: 'fried-eggs-rice', name: 'Fried egg over rice', cuisine: 'Chinese', search: 'fried egg over rice', minutes: 8, serves: 1,
     blurb: 'When cooking is not really on the table.',
     needs: [RICE, EGGS, SOY, OIL, CHILLI_OPT],
     tags: ['quick', 'vegetarian', 'one-pan'],
@@ -397,7 +404,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'egg-drop-soup', name: 'Egg drop soup', cuisine: 'Chinese', minutes: 12, serves: 2,
+    id: 'egg-drop-soup', name: 'Egg drop soup', cuisine: 'Chinese', search: 'egg drop soup', minutes: 12, serves: 2,
     blurb: 'Five minutes and a stock cube.',
     needs: [EGGS, STOCK, GINGER, SPRING, SOY, CORNFLOUR],
     tags: ['quick', 'vegetarian'],
@@ -409,7 +416,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'garlic-greens', name: 'Garlic oyster sauce greens', cuisine: 'Chinese', minutes: 10, serves: 2,
+    id: 'garlic-greens', name: 'Garlic oyster sauce greens', cuisine: 'Chinese', search: 'chinese greens in oyster sauce', minutes: 10, serves: 2,
     blurb: 'The side dish that makes a plain dinner look composed.',
     needs: [CHOY, GARLIC, OYSTER, OIL, SESAME],
     tags: ['quick', 'one-pan', 'vegetarian'],
@@ -421,7 +428,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'mapo-tofu', name: 'Mapo tofu', cuisine: 'Chinese', minutes: 25, serves: 3,
+    id: 'mapo-tofu', name: 'Mapo tofu', cuisine: 'Chinese', search: 'mapo tofu', minutes: 25, serves: 3,
     blurb: 'Numbing, hot, and mostly storecupboard.',
     needs: [TOFU, PORK, ing('Doubanjiang', ['doubanjiang', 'chilli bean paste', 'chilli paste']), GARLIC, GINGER, SPRING, CORNFLOUR, RICE, SOY],
     tags: ['one-pan'],
@@ -433,7 +440,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'soy-braised-chicken', name: 'Soy braised chicken', cuisine: 'Chinese', minutes: 45, serves: 4,
+    id: 'soy-braised-chicken', name: 'Soy braised chicken', cuisine: 'Chinese', search: 'chinese soy sauce braised chicken', minutes: 45, serves: 4,
     blurb: 'One pot, and the sauce is the point.',
     needs: [CHICKEN, SOY, DARK_SOY, GINGER, GARLIC, SUGAR, SHAOXING, SPRING, RICE],
     tags: ['one-pan'],
@@ -445,7 +452,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'chow-mein', name: 'Chow mein', cuisine: 'Chinese', minutes: 20, serves: 2,
+    id: 'chow-mein', name: 'Chow mein', cuisine: 'Chinese', search: 'chow mein', minutes: 20, serves: 2,
     blurb: 'The fridge-clearing noodle dish.',
     needs: [NOODLES, CABBAGE, CARROT, GARLIC, SOY, OYSTER, SESAME, EGGS, SPRING],
     tags: ['quick', 'one-pan'],
@@ -459,7 +466,7 @@ export const RECIPES: Recipe[] = [
 
   /* ---------------- Japanese ---------------- */
   {
-    id: 'tamago-kake-gohan', name: 'Tamago kake gohan', cuisine: 'Japanese', minutes: 5, serves: 1,
+    id: 'tamago-kake-gohan', name: 'Tamago kake gohan', cuisine: 'Japanese', search: 'tamago kake gohan', minutes: 5, serves: 1,
     blurb: 'Raw egg over hot rice. Two ingredients, and it is genuinely lovely.',
     needs: [RICE, EGGS, SOY, SPRING, NORI],
     tags: ['quick', 'vegetarian'],
@@ -470,7 +477,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'miso-soup', name: 'Miso soup', cuisine: 'Japanese', minutes: 10, serves: 2,
+    id: 'miso-soup', name: 'Miso soup', cuisine: 'Japanese', search: 'miso soup', minutes: 10, serves: 2,
     blurb: 'Ten minutes, and it makes anything else look like a meal.',
     needs: [MISO, TOFU, DASHI, SPRING, NORI],
     tags: ['quick', 'vegetarian'],
@@ -482,7 +489,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'oyakodon', name: 'Oyakodon', cuisine: 'Japanese', minutes: 20, serves: 2,
+    id: 'oyakodon', name: 'Oyakodon', cuisine: 'Japanese', search: 'oyakodon', minutes: 20, serves: 2,
     blurb: 'Chicken and egg over rice, in one small pan.',
     needs: [CHICKEN, EGGS, ONION, SOY, MIRIN, DASHI, RICE, SPRING, SAKE],
     tags: ['one-pan'],
@@ -494,7 +501,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'katsu', name: 'Chicken katsu', cuisine: 'Japanese', minutes: 30, serves: 2,
+    id: 'katsu', name: 'Chicken katsu', cuisine: 'Japanese', search: 'chicken katsu', minutes: 30, serves: 2,
     blurb: 'Worth it for the noise it makes.',
     needs: [CHICKEN, PANKO, EGGS, FLOUR, CABBAGE, RICE, OIL],
     tags: [],
@@ -506,7 +513,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'gyudon', name: 'Beef and onion donburi', cuisine: 'Japanese', minutes: 20, serves: 2,
+    id: 'gyudon', name: 'Beef and onion donburi', cuisine: 'Japanese', search: 'gyudon', minutes: 20, serves: 2,
     blurb: 'Sweet-salty beef over rice, twenty minutes flat.',
     needs: [ing('Beef', ['beef', 'sliced beef', 'steak']), ONION, SOY, MIRIN, SUGAR, GINGER, RICE, SPRING, SAKE],
     tags: ['quick', 'one-pan'],
@@ -518,7 +525,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'agedashi-tofu', name: 'Agedashi tofu', cuisine: 'Japanese', minutes: 25, serves: 2,
+    id: 'agedashi-tofu', name: 'Agedashi tofu', cuisine: 'Japanese', search: 'agedashi tofu', minutes: 25, serves: 2,
     blurb: 'Crisp outside, custard inside.',
     needs: [TOFU, CORNFLOUR, DASHI, SOY, MIRIN, GINGER, SPRING, OIL],
     tags: ['vegetarian'],
@@ -530,7 +537,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'yaki-udon', name: 'Yaki udon', cuisine: 'Japanese', minutes: 15, serves: 2,
+    id: 'yaki-udon', name: 'Yaki udon', cuisine: 'Japanese', search: 'yaki udon', minutes: 15, serves: 2,
     blurb: 'Fatter noodles, faster dinner.',
     needs: [ing('Udon', ['udon', 'noodles', 'thick noodles']), CABBAGE, ONION, SOY, MIRIN, OYSTER, SESAME_SEEDS, SPRING],
     tags: ['quick', 'one-pan'],
@@ -544,7 +551,7 @@ export const RECIPES: Recipe[] = [
 
   /* ---------------- Italian ---------------- */
   {
-    id: 'aglio-e-olio', name: 'Spaghetti aglio e olio', cuisine: 'Italian', minutes: 15, serves: 2,
+    id: 'aglio-e-olio', name: 'Spaghetti aglio e olio', cuisine: 'Italian', search: 'spaghetti aglio e olio', minutes: 15, serves: 2,
     blurb: 'Four things. Gets ruined by rushing the garlic.',
     needs: [PASTA, GARLIC, OLIVE_OIL, CHILLI_OPT, PARMESAN, SALT],
     tags: ['quick', 'vegetarian'],
@@ -556,7 +563,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'cacio-e-pepe', name: 'Cacio e pepe', cuisine: 'Italian', minutes: 15, serves: 2,
+    id: 'cacio-e-pepe', name: 'Cacio e pepe', cuisine: 'Italian', search: 'cacio e pepe', minutes: 15, serves: 2,
     blurb: 'Cheese, pepper, pasta water. Technique, not ingredients.',
     needs: [PASTA, PARMESAN, PEPPER, SALT],
     tags: ['quick', 'vegetarian'],
@@ -568,7 +575,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'carbonara', name: 'Carbonara', cuisine: 'Italian', minutes: 20, serves: 2,
+    id: 'carbonara', name: 'Carbonara', cuisine: 'Italian', search: 'spaghetti carbonara', minutes: 20, serves: 2,
     blurb: 'No cream. It never had cream.',
     needs: [PASTA, EGGS, PANCETTA, PARMESAN, PEPPER],
     tags: [],
@@ -580,7 +587,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'pasta-pomodoro', name: 'Pasta pomodoro', cuisine: 'Italian', minutes: 30, serves: 2,
+    id: 'pasta-pomodoro', name: 'Pasta pomodoro', cuisine: 'Italian', search: 'pasta al pomodoro', minutes: 30, serves: 2,
     blurb: 'A tin of tomatoes, treated with respect.',
     needs: [PASTA, TOMATO, GARLIC, OLIVE_OIL, BASIL, PARMESAN, SALT],
     tags: ['vegetarian'],
@@ -592,7 +599,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'risotto-bianco', name: 'Risotto bianco', cuisine: 'Italian', minutes: 35, serves: 2,
+    id: 'risotto-bianco', name: 'Risotto bianco', cuisine: 'Italian', search: 'risotto bianco', minutes: 35, serves: 2,
     blurb: 'The base every other risotto is built on.',
     needs: [ARBORIO, ONION, BUTTER, PARMESAN, STOCK, WHITE_WINE, OLIVE_OIL],
     tags: ['vegetarian'],
@@ -604,7 +611,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'puttanesca', name: 'Puttanesca', cuisine: 'Italian', minutes: 25, serves: 2,
+    id: 'puttanesca', name: 'Puttanesca', cuisine: 'Italian', search: 'spaghetti alla puttanesca', minutes: 25, serves: 2,
     blurb: 'Salty, sharp, and entirely from tins and jars.',
     needs: [PASTA, TOMATO, ANCHOVY, GARLIC, CHILLI_OPT, OLIVE_OIL, ing('Olives', ['olives', 'capers'], { optional: true })],
     tags: ['storecupboard'],
@@ -616,7 +623,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'pasta-fagioli', name: 'Pasta e fagioli', cuisine: 'Italian', minutes: 30, serves: 3,
+    id: 'pasta-fagioli', name: 'Pasta e fagioli', cuisine: 'Italian', search: 'pasta e fagioli', minutes: 30, serves: 3,
     blurb: 'Beans and pasta. Peasant food, and better than most restaurant food.',
     needs: [PASTA, CANNELLINI, TOMATO, GARLIC, ONION, OLIVE_OIL, PARMESAN, ing('Rosemary', ['rosemary'], { optional: true })],
     tags: ['vegetarian', 'storecupboard'],
@@ -628,7 +635,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'caprese-eggs', name: 'Eggs in tomato with mozzarella', cuisine: 'Italian', minutes: 20, serves: 2,
+    id: 'caprese-eggs', name: 'Eggs in tomato with mozzarella', cuisine: 'Italian', search: 'eggs in purgatory', minutes: 20, serves: 2,
     blurb: 'Breakfast that behaves like dinner.',
     needs: [EGGS, TOMATO, MOZZARELLA, GARLIC, OLIVE_OIL, BASIL, BREAD],
     tags: ['one-pan', 'vegetarian'],
@@ -642,7 +649,7 @@ export const RECIPES: Recipe[] = [
 
   /* ---------------- French ---------------- */
   {
-    id: 'french-omelette', name: 'French omelette', cuisine: 'French', minutes: 8, serves: 1,
+    id: 'french-omelette', name: 'French omelette', cuisine: 'French', search: 'french omelette', minutes: 8, serves: 1,
     blurb: 'Pale, rolled, and slightly underdone. The hardest easy thing.',
     needs: [EGGS, BUTTER, SALT, GRUYERE],
     tags: ['quick', 'vegetarian'],
@@ -654,7 +661,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'croque-monsieur', name: 'Croque monsieur', cuisine: 'French', minutes: 25, serves: 2,
+    id: 'croque-monsieur', name: 'Croque monsieur', cuisine: 'French', search: 'croque monsieur', minutes: 25, serves: 2,
     blurb: 'A cheese toastie that went to finishing school.',
     needs: [BREAD, HAM, GRUYERE, BUTTER, FLOUR, MILK, DIJON, PEPPER],
     tags: [],
@@ -666,7 +673,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'soupe-oignon', name: 'Onion soup', cuisine: 'French', minutes: 75, serves: 4,
+    id: 'soupe-oignon', name: 'Onion soup', cuisine: 'French', search: 'french onion soup', minutes: 75, serves: 4,
     blurb: 'Almost entirely onions. The hour is not optional.',
     needs: [ONION, BUTTER, STOCK, BREAD, GRUYERE, THYME, WHITE_WINE, FLOUR],
     tags: [],
@@ -678,7 +685,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'gratin-dauphinois', name: 'Potato gratin', cuisine: 'French', minutes: 75, serves: 4,
+    id: 'gratin-dauphinois', name: 'Potato gratin', cuisine: 'French', search: 'gratin dauphinois', minutes: 75, serves: 4,
     blurb: 'Potatoes, cream, garlic. Nothing else, and nothing else needed.',
     needs: [POTATO, CREAM, GARLIC, BUTTER, SALT, GRUYERE, ing('Nutmeg', ['nutmeg'], { optional: true })],
     tags: ['vegetarian'],
@@ -690,7 +697,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'poulet-moutarde', name: 'Mustard chicken', cuisine: 'French', minutes: 40, serves: 3,
+    id: 'poulet-moutarde', name: 'Mustard chicken', cuisine: 'French', search: 'french mustard chicken', minutes: 40, serves: 3,
     blurb: 'One pan, and the sauce makes itself.',
     needs: [CHICKEN, DIJON, CREAM, ONION, GARLIC, WHITE_WINE, THYME, BUTTER],
     tags: ['one-pan'],
@@ -702,7 +709,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'lentilles', name: 'Lentils with mustard and thyme', cuisine: 'French', minutes: 40, serves: 3,
+    id: 'lentilles', name: 'Lentils with mustard and thyme', cuisine: 'French', search: 'french puy lentils with mustard', minutes: 40, serves: 3,
     blurb: 'Cheap, meatless, and quietly excellent.',
     needs: [LENTILS, CARROT, ONION, GARLIC, DIJON, THYME, VINEGAR_W, OLIVE_OIL],
     tags: ['vegetarian'],
@@ -714,7 +721,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'oeufs-cocotte', name: 'Baked eggs with cream', cuisine: 'French', minutes: 20, serves: 2,
+    id: 'oeufs-cocotte', name: 'Baked eggs with cream', cuisine: 'French', search: 'oeufs en cocotte', minutes: 20, serves: 2,
     blurb: 'Eggs, cream, an oven, ten minutes of attention.',
     needs: [EGGS, CREAM, BUTTER, GRUYERE, BREAD, THYME],
     tags: ['quick', 'vegetarian'],
@@ -726,7 +733,7 @@ export const RECIPES: Recipe[] = [
     ],
   },
   {
-    id: 'sauce-tomate-francaise', name: 'Steak with pan sauce', cuisine: 'French', minutes: 20, serves: 2,
+    id: 'sauce-tomate-francaise', name: 'Steak with pan sauce', cuisine: 'French', search: 'steak with pan sauce', minutes: 20, serves: 2,
     blurb: 'The sauce takes three minutes and changes everything.',
     needs: [ing('Steak', ['steak', 'beef']), BUTTER, SHALLOT, DIJON, CREAM, WHITE_WINE, PEPPER, SALT],
     tags: ['quick', 'one-pan'],
@@ -738,6 +745,27 @@ export const RECIPES: Recipe[] = [
     ],
   },
 ]
+/**
+ * Where to go and watch someone make it.
+ *
+ * A SEARCH, deliberately, not a hand-picked video. Curating forty specific
+ * links means either inventing them — which produces confident 404s — or
+ * verifying them and then re-verifying forever as channels delete things. A
+ * search URL cannot rot, and it improves over time rather than decaying. It is
+ * also the honest shape of the answer: nobody here has watched these videos.
+ */
+export function videoQuery(r: Recipe): string {
+  return `${r.search ?? r.name} recipe`
+}
+
+export function youtubeSearchUrl(r: Recipe): string {
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(videoQuery(r))}`
+}
+
+export function webSearchUrl(r: Recipe): string {
+  return `https://duckduckgo.com/?q=${encodeURIComponent(videoQuery(r))}`
+}
+
 /** Every distinct non-staple ingredient across the library, for the shopping hand-off. */
 export function allIngredients(recipes: Recipe[] = RECIPES): Ingredient[] {
   const seen = new Map<string, Ingredient>()
