@@ -25,6 +25,32 @@ export function defined<T extends object>(o: T): Partial<T> {
   return out as Partial<T>
 }
 
+/**
+ * `defined` one level down is not enough.
+ *
+ * Firestore rejects `undefined` ANYWHERE in a payload, including inside an
+ * object inside an array — and it rejects the whole write, not the one field.
+ * `setQty` built a StockEvent with `note: undefined` (no caller has ever passed
+ * a note), pushed it into `history[]`, and every count correction in the app
+ * therefore threw before it reached the network. The callers await it inside
+ * `try/finally` with no `catch`, so it failed in complete silence.
+ *
+ * Strips undefined recursively. Arrays keep their length and order; `null` is
+ * left alone, because null is a value Firestore stores and means something here
+ * ("no expiry date" is not the same as "never asked").
+ */
+export function deepDefined<T>(v: T): T {
+  if (Array.isArray(v)) return v.map(deepDefined) as unknown as T
+  if (v && typeof v === 'object' && !(v instanceof Date)) {
+    const out: Record<string, unknown> = {}
+    for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+      if (x !== undefined) out[k] = deepDefined(x)
+    }
+    return out as T
+  }
+  return v
+}
+
 export function newLocationRecord(
   patch: Partial<StorageLocation>,
   ts: string,

@@ -30,9 +30,9 @@ console.log('recipes: word matching')
   ok('normalises punctuation and case', norm('Jasmine Rice, 5kg!') === 'jasmine rice 5kg')
   ok('finds a whole word', mentions('jasmine rice 5kg', 'rice'))
   ok('finds a multi-word phrase', mentions('light soy sauce', 'soy sauce'))
-  // The bug this exists to prevent.
-  ok('does NOT match rice inside rice vinegar', !mentions('rice vinegar', 'rice vinegar bottle')
-    && mentions('rice vinegar', 'rice'), 'sanity of the fixture')
+  // mentions() is whole-word only, so at this level "rice" DOES appear in
+  // "rice vinegar" — that is correct and is why ingredients carry `not`.
+  ok('whole-word matching alone still sees rice in rice vinegar', mentions('rice vinegar', 'rice'))
   ok('does not match a word fragment', !mentions('chocolate', 'late'))
   ok('does not match across a missing word', !mentions('soy bean sauce', 'soy sauce'))
   ok('empty inputs are safe', !mentions('', 'rice') && !mentions('rice', '') && norm(null) === '')
@@ -41,6 +41,49 @@ console.log('recipes: word matching')
   ok('folds accents', norm('Gruyère') === 'gruyere' && norm('crème fraîche') === 'creme fraiche')
   ok('an accented item is still found',
     buildPantry([item('Gruyère', 1)], []).have.some(h => mentions(h, 'gruyere')))
+}
+
+console.log('recipes: one food does not stand in for another')
+{
+  // Head-noun collisions. Whole-word matching cannot catch these; `not` does.
+  const cases: [string, string, boolean][] = [
+    ['Rice vinegar',        'Rice',        false],
+    ['Jasmine rice 5kg',    'Rice',        true],
+    ['Spring onions',       'Onion',       false],
+    ['Brown onions',        'Onion',       true],
+    ['Chicken stock cubes', 'Chicken',     false],
+    ['Chicken thigh',       'Chicken',     true],
+    ['Sesame oil',          'Cooking oil', false],
+    ['Vegetable oil 2L',    'Cooking oil', true],
+  ]
+  for (const [pantryLine, ingName, want] of cases) {
+    const ing = allIngredients().find(i => i.name === ingName)!
+    const p = buildPantry([item(pantryLine, 1)], [])
+    const got = p.have.some(h => ing.match.some(m => mentions(h, m))
+      && !(ing.not ?? []).some(n => mentions(h, n)))
+    ok(`"${pantryLine}" ${want ? 'counts as' : 'is NOT'} ${ingName}`, got === want)
+  }
+
+  // The whole-dish version of the same bug.
+  const vinegarOnly = buildPantry([item('Rice vinegar', 1), item('Eggs', 6)], [])
+  const fried = RECIPES.find(r => r.id === 'fried-eggs-rice')!
+  ok('a bottle of rice vinegar does not make fried egg over rice cookable',
+    !matchRecipe(fried, vinegarOnly).canCook)
+}
+
+console.log('recipes: every ingredient can be satisfied by its own name')
+{
+  // The shopping hand-off creates an item called exactly `ingredient.name`. If
+  // that name cannot satisfy the ingredient, the recipe stays short forever and
+  // offers to add it again every time. CHOY was called "Green vegetable" while
+  // matching only choy sum / bok choy / kai lan / spinach / greens.
+  const broken = allIngredients().filter(i => {
+    const p = buildPantry([item(i.name, 1)], [])
+    return !p.have.some(h => i.match.some(m => mentions(h, m))
+      && !(i.not ?? []).some(n => mentions(h, n)))
+  })
+  ok('buying an ingredient by its own name satisfies it', broken.length === 0,
+    broken.map(i => `${i.name} [${i.match.join('|')}]`).join('; '))
 }
 
 console.log('recipes: the pantry')

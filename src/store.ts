@@ -13,7 +13,7 @@ import {
   type HousePlan, type Item, type Settings, type StockEvent, type StockEventType,
   type StorageLocation,
 } from './types'
-import { defined, newItemRecord, newLocationRecord } from './lib/records'
+import { deepDefined, defined, newItemRecord, newLocationRecord } from './lib/records'
 import { estimateBurnPerDay } from './lib/stock'
 
 const nowIso = () => new Date().toISOString()
@@ -216,19 +216,21 @@ export const useStore = create<Store>((set, get) => ({
       delta: after - before,
       at: nowIso(),
       by,
-      note,
+      // Only when there is one. An `undefined` key here is not a missing note,
+      // it is a rejected write — see deepDefined in lib/records.
+      ...(note ? { note } : {}),
     }
 
     const history = [...((item as Item & { history?: StockEvent[] }).history ?? []), ev].slice(-HISTORY_CAP)
     const burnPerDay = estimateBurnPerDay(history)
 
-    await updateDoc(doc(db, 'items', id), {
+    await updateDoc(doc(db, 'items', id), deepDefined({
       qty: after,
       history,
       burnPerDay: burnPerDay ?? null,
       lastVerifiedAt: ev.at,
       updatedAt: ev.at,
-    })
+    }))
     void logEvent(id, kind, before, after, by, note)
   },
 

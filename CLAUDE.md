@@ -80,6 +80,15 @@ photographed saved with no photo and no tags — silently, looking exactly like 
 save button that did nothing. Adding a field to the type and the form must not
 require remembering a third place. `scripts/records.test.ts` guards this.
 
+**`deepDefined` for anything nested.** `defined()` only strips the top level.
+Firestore rejects `undefined` ANYWHERE — including inside an object inside an
+array — and rejects the WHOLE write. `setQty` built a StockEvent with
+`note: undefined` (no caller has ever passed a note), pushed it into
+`history[]`, and so every count correction threw before reaching the network.
+The callers `await` it inside `try/finally` with no `catch`, so it failed in
+total silence — the app's stated primary interaction, broken and invisible.
+Anything with an array of objects goes through `deepDefined`.
+
 `defined()` matters as much as the merge: **Firestore rejects a write whose
 value is `undefined`**, and an optional field the form left alone is exactly
 that, so one untouched field would throw the whole save. Every write path
@@ -146,8 +155,16 @@ Three things the matcher gets right and are easy to break:
 - **Staples are assumed present** unless a tracked item says they ran out.
   Nobody catalogues salt, and blocking on it buries every recipe behind a pantry
   entry nobody will make.
-- **Matching is whole-word, not substring** (`mentions`). Substring matching had
-  "rice" finding "rice vinegar" and claiming a condiment was dinner.
+- **Matching is whole-word, not substring** (`mentions`) — and whole-word is
+  still not enough. "rice" IS a whole word inside "rice vinegar", "onion" inside
+  "spring onion", "chicken" inside "chicken stock". Ingredients therefore carry
+  **`not`**, phrases that disqualify a source outright, so a bottle of rice
+  vinegar cannot pass for a bag of rice.
+- **An ingredient must be satisfiable by its own `name`.** The shopping hand-off
+  creates an item called exactly that, so if the name does not match the
+  ingredient's own phrases the recipe stays short forever and re-offers it every
+  time. CHOY was called "Green vegetable" and matched only choy sum / bok choy /
+  kai lan / spinach. A test now asserts this for every ingredient.
 - **`norm` folds accents.** Without it "Gruyère" becomes "gruy re" — the
   accented letter is a word break — so the ingredient can never be found and the
   recipe silently claims you lack a cheese sitting in the fridge.

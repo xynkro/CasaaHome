@@ -7,7 +7,7 @@
  * and the save button looked broken. Nothing failed; the data just was not
  * there. These checks are the thing that was missing.
  */
-import { defined, newItemRecord, newLocationRecord } from '../src/lib/records'
+import { deepDefined, defined, newItemRecord, newLocationRecord } from '../src/lib/records'
 import type { Item, StorageLocation } from '../src/types'
 
 let fail = 0
@@ -84,6 +84,41 @@ console.log('records: nothing undefined ever reaches Firestore')
   ok('defined() strips undefined but keeps null and 0 and empty string',
     JSON.stringify(defined({ a: undefined, b: null, c: 0, d: '', e: false }))
       === '{"b":null,"c":0,"d":"","e":false}')
+}
+
+console.log('records: undefined nested inside an array')
+{
+  // The exact payload setQty builds. Firestore rejects undefined ANYWHERE,
+  // including inside an object inside an array, and rejects the whole write —
+  // so this made every count correction throw, silently, for every caller.
+  const ev = {
+    id: 'e1', itemId: 'i1', type: 'reconcile', qtyBefore: 6, qtyAfter: 2,
+    delta: -4, at: TS_, by: 'a@b.c', note: undefined,
+  }
+  const payload = deepDefined({ qty: 2, history: [ev], burnPerDay: null, updatedAt: TS_ })
+
+  const scan = (o: unknown, path = ''): string[] => {
+    if (Array.isArray(o)) return o.flatMap((x, i) => scan(x, `${path}[${i}]`))
+    if (o && typeof o === 'object') {
+      return Object.entries(o as Record<string, unknown>)
+        .flatMap(([k, v]) => (v === undefined ? [`${path}.${k}`] : scan(v, `${path}.${k}`)))
+    }
+    return []
+  }
+  const bad = scan(payload)
+  ok('strips undefined from inside an array', bad.length === 0, bad.join(', '))
+  ok('the event survives otherwise',
+    (payload.history[0] as Record<string, unknown>).qtyAfter === 2
+    && (payload.history[0] as Record<string, unknown>).by === 'a@b.c')
+  ok('the array keeps its length', payload.history.length === 1)
+  ok('null is preserved, because null means something',
+    payload.burnPerDay === null
+    && (deepDefined({ a: null, b: 0, c: '', d: false }) as Record<string, unknown>).a === null)
+  ok('a note that exists is kept',
+    (deepDefined({ history: [{ ...ev, note: 'found 2 at the back' }] }).history[0] as Record<string, unknown>).note
+      === 'found 2 at the back')
+  ok('deepDefined leaves primitives and dates alone',
+    deepDefined(3) === 3 && deepDefined('x') === 'x' && deepDefined(null) === null)
 }
 
 console.log('records: an id in the patch never becomes a field')

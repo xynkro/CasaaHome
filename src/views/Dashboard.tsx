@@ -91,7 +91,12 @@ export default function Dashboard({ onOpenItem }: { onOpenItem: (id: string) => 
     return given
   }, [settings.nicknames, user?.email, user?.displayName])
 
-  if (loaded && live.length === 0) {
+  // Empty means nothing catalogued AT ALL, not merely no tracked items. This
+  // house photographs cupboards and tags them far more often than it counts
+  // individual things, so gating on items alone told someone with ten
+  // photographed cupboards to "start with one cupboard" — and hid their rooms
+  // and the cook card behind that advice.
+  if (loaded && locationsLoaded && live.length === 0 && locations.length === 0) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-6">
         <Header greeting={greeting} name={who} house={settings.householdName} />

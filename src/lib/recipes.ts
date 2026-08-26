@@ -29,6 +29,23 @@ export interface Ingredient {
   staple?: boolean
   /** Nice to have. Never blocks, listed as a suggestion. */
   optional?: boolean
+  /**
+   * Phrases that DISQUALIFY a source, however well it otherwise matched.
+   *
+   * Whole-word matching stopped "rice" finding the middle of "liquorice", but
+   * it cannot help when the ingredient's name is the head noun of a different
+   * food: "rice vinegar" contains the whole word rice, "spring onion" contains
+   * onion, "chicken stock" contains chicken. Without this a bottle of rice
+   * vinegar in the cupboard reads as a bag of rice, and the app cheerfully
+   * says you can make fried rice.
+   *
+   * Evaluated per SOURCE STRING: a source carrying a disqualifying phrase does
+   * not count at all, even if it also carries a good one. That under-claims in
+   * the rare mixed case, which is the right direction to be wrong — telling
+   * someone they might be out of rice is recoverable, sending them to the hob
+   * to cook a condiment is not.
+   */
+  not?: string[]
 }
 
 /**
@@ -115,7 +132,9 @@ export function mentions(haystack: string, phrase: string): boolean {
 }
 
 export function ingredientIn(ing: Ingredient, sources: string[]): boolean {
-  return sources.some(s => ing.match.some(m => mentions(s, m)))
+  return sources.some(s =>
+    ing.match.some(m => mentions(s, m))
+    && !(ing.not ?? []).some(n => mentions(s, n)))
 }
 
 /** Rank: cookable first, then fewest things missing, then quickest. */
@@ -167,19 +186,21 @@ const ing = (name: string, match: string[], extra: Partial<Ingredient> = {}): In
 
 /* Assumed present unless the house says it has run out. */
 const SALT = ing('Salt', ['salt', 'sea salt'], { staple: true })
-const OIL = ing('Cooking oil', ['oil', 'cooking oil', 'vegetable oil'], { staple: true })
+const OIL = ing('Cooking oil', ['oil', 'cooking oil', 'vegetable oil'],
+  { staple: true, not: ['sesame oil', 'olive oil', 'truffle oil'] })
 const PEPPER = ing('Pepper', ['pepper', 'black pepper', 'white pepper'], { staple: true })
 const SUGAR = ing('Sugar', ['sugar'], { staple: true })
 const SOY = ing('Soy sauce', ['soy sauce', 'soy', 'light soy'], { staple: true })
 
 /* Everyday */
 const EGGS = ing('Eggs', ['egg', 'eggs'])
-const RICE = ing('Rice', ['rice', 'jasmine rice', 'white rice'])
+const RICE = ing('Rice', ['rice', 'jasmine rice', 'white rice'],
+  { not: ['rice vinegar', 'rice wine', 'rice noodles', 'risotto rice', 'wild rice'] })
 const GARLIC = ing('Garlic', ['garlic'])
-const ONION = ing('Onion', ['onion', 'onions'])
+const ONION = ing('Onion', ['onion', 'onions'], { not: ['spring onion', 'spring onions'] })
 const SHALLOT = ing('Shallots', ['shallot', 'shallots'])
 const GINGER = ing('Ginger', ['ginger'])
-const SPRING = ing('Spring onion', ['spring onion', 'scallion', 'scallions'], { optional: true })
+const SPRING = ing('Spring onion', ['spring onion', 'spring onions', 'scallion', 'scallions'], { optional: true })
 const CHILLI = ing('Chilli', ['chilli', 'chili', 'red chilli'])
 /** The same thing where it is a garnish rather than the point of the dish. */
 const CHILLI_OPT = ing('Chilli', ['chilli', 'chili', 'red chilli'], { optional: true })
@@ -193,7 +214,8 @@ const TOMATO = ing('Tomatoes', ['tomato', 'tomatoes', 'canned tomatoes'])
 const CUCUMBER = ing('Cucumber', ['cucumber'])
 const CABBAGE = ing('Cabbage', ['cabbage'])
 const BREAD = ing('Bread', ['bread', 'loaf', 'baguette'])
-const CHICKEN = ing('Chicken', ['chicken', 'chicken thigh', 'chicken breast'])
+const CHICKEN = ing('Chicken', ['chicken', 'chicken thigh', 'chicken breast'],
+  { not: ['chicken stock', 'chicken powder', 'chicken cube'] })
 const PORK = ing('Pork', ['pork', 'pork belly', 'minced pork'])
 const PRAWNS = ing('Prawns', ['prawn', 'prawns', 'shrimp'])
 const TOFU = ing('Tofu', ['tofu', 'tau kwa', 'beancurd'])
@@ -224,7 +246,7 @@ const SHAOXING = ing('Shaoxing wine', ['shaoxing', 'rice wine', 'cooking wine'],
 const VINEGAR = ing('Rice vinegar', ['rice vinegar', 'black vinegar', 'chinkiang'], { optional: true })
 const NOODLES = ing('Noodles', ['noodles', 'egg noodles', 'mee', 'ramen'])
 const DARK_SOY = ing('Dark soy sauce', ['dark soy', 'dark soy sauce'], { optional: true })
-const CHOY = ing('Green vegetable', ['choy sum', 'bok choy', 'kai lan', 'spinach', 'greens'])
+const CHOY = ing('Greens', ['greens', 'green vegetable', 'choy sum', 'bok choy', 'kai lan', 'spinach'])
 
 /* Japanese */
 const MIRIN = ing('Mirin', ['mirin'])
@@ -242,10 +264,10 @@ const PARMESAN = ing('Parmesan', ['parmesan', 'parmigiano', 'pecorino', 'hard ch
 const BASIL = ing('Basil', ['basil'], { optional: true })
 const PANCETTA = ing('Pancetta', ['pancetta', 'guanciale', 'bacon'])
 const ANCHOVY = ing('Anchovies', ['anchovy', 'anchovies'])
-const ARBORIO = ing('Risotto rice', ['arborio', 'risotto rice', 'carnaroli'])
+const ARBORIO = ing('Risotto rice', ['risotto rice', 'arborio', 'carnaroli'])
 const WHITE_WINE = ing('White wine', ['white wine', 'wine'], { optional: true })
 const MOZZARELLA = ing('Mozzarella', ['mozzarella'])
-const CANNELLINI = ing('Tinned beans', ['cannellini', 'butter beans', 'chickpeas', 'beans'])
+const CANNELLINI = ing('Tinned beans', ['tinned beans', 'cannellini', 'butter beans', 'chickpeas', 'beans'])
 
 /* French */
 const DIJON = ing('Dijon mustard', ['dijon', 'mustard'])
