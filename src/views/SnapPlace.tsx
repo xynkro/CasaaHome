@@ -35,6 +35,7 @@ export default function SnapPlace({
   const [shot, setShot] = useState<string | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [uploadFailed, setUploadFailed] = useState(false)
   const [name, setName] = useState('')
   const [kind, setKind] = useState<LocationKind>('cabinet')
   const [roomId, setRoomId] = useState(presetRoomId ?? '')
@@ -66,10 +67,16 @@ export default function SnapPlace({
     // Show it immediately; the upload can finish while the form is filled in.
     setPreview(URL.createObjectURL(file))
     setUploading(true)
+    setUploadFailed(false)
     try {
       setShot(await uploadPhoto(file, 'locations', name || 'cupboard'))
     } catch {
+      // The preview is a local object URL and keeps showing the photo whatever
+      // the network did, so a failed upload looked exactly like a successful
+      // one and saved a cupboard with no picture. Standing in a store cupboard
+      // on one bar is the case this app was designed for, so say it plainly.
       setShot(null)
+      setUploadFailed(true)
     } finally {
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -99,6 +106,7 @@ export default function SnapPlace({
         photoUrls: [],
       })
       setDone(d => [name.trim(), ...d])
+      setUploadFailed(false)
       if (another) {
         // Keep the room; clear everything that is about this one cupboard.
         setName(''); setContents(''); setShot(null); setPreview(null)
@@ -130,7 +138,7 @@ export default function SnapPlace({
         footer={
           <div className="flex gap-2">
             <button className="btn btn-primary flex-[2]" disabled={!ready || busy} onClick={() => save(true)}>
-              Save · snap the next
+              {uploadFailed ? 'Save without it · snap the next' : 'Save · snap the next'}
             </button>
             <button className="btn btn-ghost flex-1" disabled={!ready || busy} onClick={() => save(false)}>
               Save · done
@@ -149,6 +157,11 @@ export default function SnapPlace({
               {uploading && (
                 <div className="absolute inset-x-0 bottom-0 bg-ink-950/85 px-3 py-1 text-micro text-ink-400">
                   Saving the photo…
+                </div>
+              )}
+              {uploadFailed && !uploading && (
+                <div className="absolute inset-x-0 bottom-0 bg-mark-red px-3 py-1.5 text-micro font-medium text-white">
+                  The photo did not upload. Retake to try again, or save without it.
                 </div>
               )}
             </div>

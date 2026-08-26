@@ -49,6 +49,13 @@ export function SwipeRow({
   // A row is usually tappable underneath — a cupboard expands, an item opens.
   // Without this the click that ends a swipe also fires that, so swiping to
   // delete would open the very thing you were trying to get rid of.
+  //
+  // It is cleared on the next pointerdown, NOT by the click it swallows. A
+  // drag past the browser's slop threshold produces no click at all, so a flag
+  // that only a click could clear stayed armed after every swipe and ate the
+  // next honest tap on that row — the same bug as before, pointed the other
+  // way. Armed only for the gap between one gesture ending and the next
+  // beginning, which is exactly when a stray synthetic click can arrive.
   const swallowClick = useRef(false)
 
   const open = openId === id
@@ -58,6 +65,7 @@ export function SwipeRow({
   }, [open])
 
   const down = (e: React.PointerEvent) => {
+    swallowClick.current = false
     if (disabled || busy || e.pointerType === 'mouse') return
     start.current = { x: e.clientX, y: e.clientY, axis: 'none' }
   }
