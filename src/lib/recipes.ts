@@ -77,10 +77,17 @@ export interface Recipe {
 }
 
 export interface Pantry {
-  /** Normalised phrases the house can currently supply. */
+  /** Phrases from TRACKED items with something left. The strongest evidence. */
   have: string[]
-  /** Phrases that exist as tracked items but have run out. */
+  /** Phrases from tracked items at zero. The only source that can say "none". */
   out: string[]
+  /**
+   * Phrases from cupboard notes. These carry no count, so a tag can only ever
+   * claim "there is some" — and a tracked item at zero overrules it. Correcting
+   * eggs to zero has to make the omelette stop being cookable, or the app's
+   * primary interaction changes nothing on the screen that reads it.
+   */
+  tags: string[]
 }
 
 export interface Match {
@@ -155,8 +162,13 @@ export function matchRecipe(recipe: Recipe, pantry: Pantry): Match {
   const staplesOut: Ingredient[] = []
 
   for (const ing of recipe.needs) {
-    const present = ingredientIn(ing, pantry.have)
     const ranOut = ingredientIn(ing, pantry.out)
+    // A cupboard tag is a claim there is some, written at some point in the
+    // past. A tracked item at zero is a count taken deliberately, just now.
+    // The count wins — otherwise correcting eggs to zero leaves the omelette
+    // sitting there as cookable and the correction appears to do nothing.
+    const present = ingredientIn(ing, pantry.have)
+      || (!ranOut && ingredientIn(ing, pantry.tags))
 
     if (present) { have.push(ing); continue }
     if (ing.staple) {
@@ -219,7 +231,9 @@ const CHICKEN = ing('Chicken', ['chicken', 'chicken thigh', 'chicken breast'],
 const PORK = ing('Pork', ['pork', 'pork belly', 'minced pork'])
 const PRAWNS = ing('Prawns', ['prawn', 'prawns', 'shrimp'])
 const TOFU = ing('Tofu', ['tofu', 'tau kwa', 'beancurd'])
-const STOCK = ing('Stock', ['stock', 'stock cube', 'bouillon', 'broth'], { optional: true })
+const STOCK = ing('Stock', ['stock', 'stock cube', 'bouillon', 'broth'])
+/** Where the steps say "water or stock" and mean it. */
+const STOCK_OPT = ing('Stock', ['stock', 'stock cube', 'bouillon', 'broth'], { optional: true })
 const LIME = ing('Lime', ['lime', 'calamansi'], { optional: true })
 const CORNFLOUR = ing('Cornflour', ['cornflour', 'cornstarch'], { optional: true })
 
@@ -261,6 +275,8 @@ const SESAME_SEEDS = ing('Sesame seeds', ['sesame seeds', 'sesame seed'], { opti
 const PASTA = ing('Pasta', ['pasta', 'spaghetti', 'penne', 'linguine', 'rigatoni'])
 const OLIVE_OIL = ing('Olive oil', ['olive oil', 'extra virgin'])
 const PARMESAN = ing('Parmesan', ['parmesan', 'parmigiano', 'pecorino', 'hard cheese'])
+/** Grated over at the table rather than cooked in. */
+const PARMESAN_OPT = ing('Parmesan', ['parmesan', 'parmigiano', 'pecorino', 'hard cheese'], { optional: true })
 const BASIL = ing('Basil', ['basil'], { optional: true })
 const PANCETTA = ing('Pancetta', ['pancetta', 'guanciale', 'bacon'])
 const ANCHOVY = ing('Anchovies', ['anchovy', 'anchovies'])
@@ -575,7 +591,7 @@ export const RECIPES: Recipe[] = [
   {
     id: 'aglio-e-olio', name: 'Spaghetti aglio e olio', cuisine: 'Italian', search: 'spaghetti aglio e olio', minutes: 15, serves: 2,
     blurb: 'Four things. Gets ruined by rushing the garlic.',
-    needs: [PASTA, GARLIC, OLIVE_OIL, CHILLI_OPT, PARMESAN, SALT],
+    needs: [PASTA, GARLIC, OLIVE_OIL, CHILLI_OPT, SALT, PARMESAN_OPT],
     tags: ['quick', 'vegetarian'],
     steps: [
       'Pasta into water as salty as a good soup. Keep a mug of it before draining.',
@@ -623,7 +639,7 @@ export const RECIPES: Recipe[] = [
   {
     id: 'risotto-bianco', name: 'Risotto bianco', cuisine: 'Italian', search: 'risotto bianco', minutes: 35, serves: 2,
     blurb: 'The base every other risotto is built on.',
-    needs: [ARBORIO, ONION, BUTTER, PARMESAN, STOCK, WHITE_WINE, OLIVE_OIL],
+    needs: [ARBORIO, ONION, BUTTER, PARMESAN, STOCK_OPT, WHITE_WINE, OLIVE_OIL],
     tags: ['vegetarian'],
     steps: [
       'Onion very finely diced, softened in butter and oil without colouring. Ten minutes.',
@@ -827,6 +843,7 @@ export function buildPantry(
 ): Pantry {
   const have: string[] = []
   const out: string[] = []
+  const tags: string[] = []
 
   for (const i of items) {
     if (i.archived) continue
@@ -836,10 +853,14 @@ export function buildPantry(
   }
   for (const c of locationContents) {
     const n = norm(c)
-    if (n) have.push(n)
+    if (n) tags.push(n)
   }
 
-  // An item you have beats the same word appearing on an empty one.
+  // Two items of the same thing, one empty and one not, means you have some.
   const haveSet = new Set(have)
-  return { have: [...haveSet], out: out.filter(o => !haveSet.has(o)) }
+  return {
+    have: [...haveSet],
+    out: [...new Set(out)].filter(o => !haveSet.has(o)),
+    tags: [...new Set(tags)],
+  }
 }

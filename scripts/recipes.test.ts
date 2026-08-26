@@ -93,7 +93,7 @@ console.log('recipes: the pantry')
     ['#eggs #butter', null],
   )
   ok('a stocked item is available', p.have.some(h => mentions(h, 'rice')))
-  ok('a cupboard tag is available', p.have.some(h => mentions(h, 'eggs')))
+  ok('a cupboard tag is available', p.tags.some(h => mentions(h, 'eggs')))
   ok('an item at zero is OUT, not available',
     !p.have.some(h => mentions(h, 'milk')) && p.out.some(o => mentions(o, 'milk')))
   ok('an archived item is ignored',
@@ -102,17 +102,34 @@ console.log('recipes: the pantry')
     .have.some(h => mentions(h, 'coconut milk')))
 }
 
-console.log('recipes: an item at zero beats a stale cupboard tag')
+console.log('recipes: correcting a count to zero actually changes the answer')
 {
-  // The fridge is tagged "#eggs" from weeks ago, but eggs are tracked and at 0.
+  // The fridge is tagged "#eggs" from weeks ago. Then someone opens it, sees
+  // none, and corrects the count to zero — the app's primary interaction. If
+  // the stale tag still wins, that correction changes nothing on this screen.
   const p = buildPantry([item('Eggs', 0)], ['#eggs'])
-  // The tag still supplies it — a tag is a claim there is some, and the tag and
-  // the item are different words here. What must NOT happen is a crash or a
-  // double-count, and "eggs" must appear exactly once in have.
-  const eggsInHave = p.have.filter(h => mentions(h, 'eggs')).length
-  ok('no duplicate entries', eggsInHave <= 1, `${eggsInHave} entries`)
-  ok('out is not polluted by things we do have',
-    p.out.every(o => !p.have.includes(o)))
+  ok('the tag is recorded as a tag, not as stock', p.tags.some(t => mentions(t, 'eggs')))
+  ok('the tracked zero is recorded as out', p.out.some(o => mentions(o, 'eggs')))
+
+  const omelette = RECIPES.find(r => r.id === 'french-omelette')!
+  const withTagOnly = buildPantry([item('Butter', 1), item('Gruyere', 1)], ['#eggs'])
+  ok('a tag alone does supply the ingredient', matchRecipe(omelette, withTagOnly).canCook)
+
+  const corrected = buildPantry(
+    [item('Eggs', 0), item('Butter', 1), item('Gruyere', 1)], ['#eggs'])
+  const m = matchRecipe(omelette, corrected)
+  ok('but a tracked zero overrules the tag', !m.canCook,
+    'the omelette still reads as cookable after eggs were corrected to zero')
+  ok('and eggs are named as the thing missing', m.missing.some(i => i.name === 'Eggs'))
+  ok('as already on the list, since an item exists at zero',
+    m.missingTracked.some(i => i.name === 'Eggs'))
+
+  // Two entries for the same thing, one empty and one not, still means yes.
+  const bothKinds = buildPantry([item('Eggs', 0), item('Eggs', 6)], [])
+  ok('one empty pack does not hide a full one', matchRecipe(omelette,
+    buildPantry([item('Eggs', 0), item('Eggs', 6), item('Butter', 1), item('Gruyere', 1)], [])).canCook)
+  ok('out never contains something have also has',
+    bothKinds.out.every(o => !bothKinds.have.includes(o)))
 }
 
 console.log('recipes: matching a real recipe')
@@ -191,6 +208,30 @@ console.log('recipes: ranking')
     matchAll(RECIPES, buildPantry([], [])).every(m => !m.canCook))
   ok('fried egg over rice is reachable from eggs, rice and oil',
     ranked.find(m => m.recipe.id === 'fried-eggs-rice')?.canCook === true)
+}
+
+console.log('recipes: what a recipe needs matches what its steps do')
+{
+  // A general "every blocking ingredient appears in the steps" rule sounds
+  // right and is not true of recipe prose — steps say "noodles" for rice
+  // noodles and "hardest vegetables first" for the carrot. Encoding it needed
+  // an allowlist longer than the rule, so these are the specific contracts
+  // instead: a dish must not be blocked by something it does not use, and must
+  // be blocked by something it cannot be made without.
+  const aglio = RECIPES.find(r => r.id === 'aglio-e-olio')!
+  const fourThings = buildPantry(
+    [item('Spaghetti', 1), item('Garlic', 1), item('Olive oil', 1)], [])
+  ok('aglio e olio is cookable from its own four things', matchRecipe(aglio, fourThings).canCook,
+    'blocked by ' + matchRecipe(aglio, fourThings).missing.map(i => i.name).join(', ')
+    + ' — its blurb says "Four things" and no step mentions cheese')
+  ok('cheese is offered but never blocks',
+    aglio.needs.some(i => i.name === 'Parmesan' && i.optional))
+
+  // And the converse for the two the verifiers flagged as structural.
+  const soup = RECIPES.find(r => r.id === 'egg-drop-soup')!
+  ok('egg drop soup is not cookable without stock',
+    !matchRecipe(soup, buildPantry([item('Eggs', 6), item('Ginger', 1)], [])).canCook,
+    'a soup whose own blurb is "five minutes and a stock cube" reported Ready with no stock')
 }
 
 console.log('recipes: the library itself')

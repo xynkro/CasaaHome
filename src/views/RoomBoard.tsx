@@ -35,6 +35,8 @@ export default function RoomBoard({
   const imgRef = useRef<HTMLImageElement>(null)
   const [uploading, setUploading] = useState(false)
   const [placing, setPlacing] = useState<string | null>(null)
+  const [confirmReshoot, setConfirmReshoot] = useState(false)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
   const [openPlace, setOpenPlace] = useState<string | null>(null)
   const [snapping, setSnapping] = useState(false)
 
@@ -59,12 +61,36 @@ export default function RoomBoard({
   const setPhoto = async (files: FileList | null) => {
     const file = files?.[0]
     if (!file) return
+    // Pins are fractions of the OLD photo. Re-shooting the room from a
+    // different spot leaves every dot pointing at the wrong cupboard, and it
+    // looks authoritative while being wrong. Ask before replacing, and clear
+    // the dots if the framing has moved.
+    if (room.photoUrl && pinned.length > 0 && !confirmReshoot) {
+      setPendingFile(file)
+      setConfirmReshoot(true)
+      return
+    }
+    await commitPhoto(file, false)
+  }
+
+  const commitPhoto = async (file: File, clearPins: boolean) => {
     setUploading(true)
     try {
       const url = await uploadPhoto(file, 'locations', `room-${room.name}`)
-      await savePlan({ rooms: plan.rooms.map(r => (r.id === room.id ? { ...r, photoUrl: url } : r)) })
+      // Read the rooms fresh at write time. savePlan merges a whole array, so
+      // a copy captured before a multi-second upload would silently undo any
+      // room the other phone added or renamed while it ran.
+      const latest = useStore.getState().plan.rooms
+      await savePlan({ rooms: latest.map(r => (r.id === room.id ? { ...r, photoUrl: url } : r)) })
+      if (clearPins) {
+        for (const c of cupboards.filter(c => c.pin)) {
+          await saveLocation({ id: c.id, pin: null })
+        }
+      }
     } finally {
       setUploading(false)
+      setConfirmReshoot(false)
+      setPendingFile(null)
       if (fileRef.current) fileRef.current.value = ''
     }
   }
@@ -108,6 +134,24 @@ export default function RoomBoard({
           )
         }
       >
+        {confirmReshoot && pendingFile && (
+          <div className="mb-3 rounded-xl border border-mark-ochre/40 bg-mark-ochre/10 px-3 py-2.5">
+            <div className="text-sm font-medium text-ink-200">
+              Keep the {pinned.length} {pinned.length === 1 ? 'dot' : 'dots'} where they are?
+            </div>
+            <p className="mt-1 text-xs leading-relaxed text-ink-400">
+              They are positions on the old photo. If you shot this one from the
+              same spot they will still line up; from anywhere else they will not.
+            </p>
+            <div className="mt-2 flex gap-2">
+              <button className="btn btn-ghost flex-1 text-mini"
+                onClick={() => void commitPhoto(pendingFile, false)}>Same spot — keep them</button>
+              <button className="btn btn-primary flex-1 text-mini"
+                onClick={() => void commitPhoto(pendingFile, true)}>Start the dots again</button>
+            </div>
+          </div>
+        )}
+
         {room.photoUrl ? (
           <div className="space-y-2">
             <div

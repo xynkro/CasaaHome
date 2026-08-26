@@ -483,8 +483,10 @@ function RoomManager({ open, onClose }: { open: boolean; onClose: () => void }) 
   const plan = useStore(s => s.plan)
   const savePlan = useStore(s => s.savePlan)
   const locations = useStore(s => s.locations)
+  const saveLocation = useStore(s => s.saveLocation)
   const [name, setName] = useState('')
   const [editing, setEditing] = useState<string | null>(null)
+  const [confirmRoom, setConfirmRoom] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
 
   const rooms = plan.rooms ?? []
@@ -547,11 +549,42 @@ function RoomManager({ open, onClose }: { open: boolean; onClose: () => void }) 
                       {usedBy(r.id) || 'no'} {usedBy(r.id) === 1 ? 'place' : 'places'}
                     </span>
                   </button>
-                  <button
-                    className="tap text-ink-400 hover:text-rose-300"
-                    aria-label={`Delete ${r.name}`}
-                    onClick={() => savePlan({ rooms: rooms.filter(x => x.id !== r.id) })}
-                  >×</button>
+                  {/* The name itself is the rename button, so this sits right
+                      beside it — a thumb aiming to rename lands here instead.
+                      It used to delete on that first touch, taking the room
+                      photo and every cupboard's roomId with it, unasked. */}
+                  {confirmRoom === r.id ? (
+                    <>
+                      <span className="shrink-0 text-micro text-ink-400">
+                        {usedBy(r.id) > 0
+                          ? `${usedBy(r.id)} ${usedBy(r.id) === 1 ? 'place loses' : 'places lose'} its room`
+                          : 'Delete this room?'}
+                      </span>
+                      <button
+                        className="btn btn-ghost shrink-0 px-2 py-1 text-xs"
+                        onClick={() => setConfirmRoom(null)}
+                      >Keep</button>
+                      <button
+                        className="btn btn-danger shrink-0 px-2 py-1 text-xs"
+                        onClick={async () => {
+                          // Unfile the cupboards in the same write, or they keep
+                          // pointing at a room that no longer exists and drop
+                          // out of every grouped list without explanation.
+                          for (const l of locations.filter(l => l.roomId === r.id)) {
+                            await saveLocation({ id: l.id, roomId: null })
+                          }
+                          await savePlan({ rooms: rooms.filter(x => x.id !== r.id) })
+                          setConfirmRoom(null)
+                        }}
+                      >Delete</button>
+                    </>
+                  ) : (
+                    <button
+                      className="tap shrink-0 text-ink-400 hover:text-rose-300"
+                      aria-label={`Delete ${r.name}`}
+                      onClick={() => setConfirmRoom(r.id)}
+                    >×</button>
+                  )}
                 </>
               )}
             </li>

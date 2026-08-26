@@ -27,6 +27,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
  */
 const ACTION_W = 92
 const ENGAGE = 10
+/** How much wider than tall a gesture must be before it counts as a swipe. */
+const AXIS_BIAS = 2
 const COMMIT = ACTION_W * 0.55
 
 export function SwipeRow({
@@ -78,8 +80,13 @@ export function SwipeRow({
 
     if (s.axis === 'none') {
       if (Math.abs(ax) < ENGAGE && Math.abs(ay) < ENGAGE) return
-      // Vertical wins ties: scrolling is the far more common intent.
-      s.axis = Math.abs(ax) > Math.abs(ay) ? 'x' : 'y'
+      // Vertical wins ties, and needs beating by a margin rather than a pixel.
+      // A bare `>` on the first sample past the threshold meant an ordinary
+      // curved thumb-scroll — which starts out sideways before it straightens —
+      // latched the swipe, so rows visibly narrowed and snapped back while
+      // someone was only scrolling. A thumb arc is never twice as wide as it
+      // is tall; a deliberate swipe always is.
+      s.axis = Math.abs(ax) > Math.abs(ay) * AXIS_BIAS ? 'x' : 'y'
       if (s.axis === 'x') e.currentTarget.setPointerCapture(e.pointerId)
     }
     if (s.axis !== 'x') return
@@ -112,7 +119,12 @@ export function SwipeRow({
           Confirming takes the whole row: the sentence explaining what is about
           to be stranded does not fit in a 92pt tab, and the first attempt
           clipped it to "…ems unfiled", which is worse than no warning at all. */}
-      <div className="absolute inset-y-0 right-0 flex">
+      {/* Hidden behind the row until it is swiped, so it must be out of the
+          tab order too — otherwise every row begins with an invisible Delete,
+          and on a leaf place with nothing in it there is no confirm step
+          between Enter and the row being gone. `inert` removes it from
+          focus, hit-testing and the accessibility tree in one attribute. */}
+      <div className="absolute inset-y-0 right-0 flex" {...(open ? {} : { inert: '' as unknown as boolean })}>
         {confirming ? (
           <div className="flex items-center bg-mark-red pl-3 pr-1">
             <button

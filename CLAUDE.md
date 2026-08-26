@@ -108,10 +108,22 @@ details are load-bearing and easy to undo by accident:
   a red Delete button next to nothing. Shrinking keeps the name anchored and
   lets it truncate, so you can still read what you are deleting.
 
-The gesture also refuses to engage until horizontal movement beats vertical —
-fingers travel in arcs, and engaging on the first horizontal pixel fires
-constantly during an ordinary scroll. A completed swipe swallows the click that
-ends it, or swiping a row would also open the thing you were trying to delete.
+The gesture refuses to engage until horizontal movement beats vertical **by
+`AXIS_BIAS`, not by a pixel**. A bare `>` on the first sample past the threshold
+latched the swipe during an ordinary curved thumb-scroll, so rows narrowed and
+snapped back while someone was only scrolling. A thumb arc is never twice as
+wide as it is tall; a deliberate swipe always is.
+
+A completed swipe swallows the click that ends it, or swiping a row would open
+the thing you were trying to delete. That flag **clears on the next
+pointerdown, never on the click it swallows** — a drag past the browser's slop
+threshold produces no click at all, so a click-cleared flag stayed armed and ate
+the next honest tap on that row.
+
+The action is `inert` while the row is closed. It is painted underneath an
+opaque row, so leaving it focusable put an invisible Delete first in every row's
+tab order — and a leaf place with nothing in it has no confirm step between
+Enter and gone.
 
 Deleting a place with contents asks once in a full-width bar, because the
 sentence naming what gets unfiled does not fit in a 92pt tab. **Items always
@@ -148,10 +160,15 @@ can be wrong.
 
 Three things the matcher gets right and are easy to break:
 
-- **Cupboard tags count as stock.** Most of this house is photographed and
-  tagged rather than itemised, so "#eggs" on the fridge is often the only record
-  that there are eggs. Ignore location `contents` and the feature answers "no"
-  to everything.
+- **Cupboard tags count as stock, but a tracked zero overrules them.** Most of
+  this house is photographed and tagged rather than itemised, so "#eggs" on the
+  fridge is often the only record that there are eggs — ignore location
+  `contents` and the feature answers "no" to everything. But `Pantry` keeps
+  `tags` separate from `have` for a reason: a tag carries no count and was
+  written at some point in the past, while an item at zero is a count taken
+  deliberately, just now. Let the tag win and correcting eggs to zero leaves the
+  omelette sitting there as cookable — the app's primary interaction changing
+  nothing on the screen that reads it.
 - **Staples are assumed present** unless a tracked item says they ran out.
   Nobody catalogues salt, and blocking on it buries every recipe behind a pantry
   entry nobody will make.
